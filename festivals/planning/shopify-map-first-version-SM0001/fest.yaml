@@ -1,0 +1,49 @@
+version: "1.0"
+metadata:
+  id: SM0001
+  uuid: d4531a34-33b9-4bb7-bc51-0e92d5779ed9
+  name: shopify-map-first-version
+  goal: Shopify data in the new backend and the Command map on real data
+  festival_type: implementation
+  created_at: 2026-11-09T19:10:20.060415Z
+  initial_size_bytes: 18408
+  status_history:
+    - status: planning
+      timestamp: 2026-11-09T19:10:20.060415Z
+      path: /Users/jasperbutter/.superset/worktrees/the terminal v2/terminal-7d7aabe1/festivals/planning/shopify-map-first-version-SM0001
+      notes: Festival created
+type_config:
+  auto_phases:
+    - IMPLEMENT
+  skip_ingestion: true
+quality_gates:
+  enabled: true
+  auto_append: true
+  implementation:
+    - id: testing
+      template: gates/implementation/QUALITY_GATE_TESTING
+      name: Testing and Verification
+      enabled: true
+    - id: review
+      template: gates/implementation/QUALITY_GATE_REVIEW
+      name: Code Review
+      enabled: true
+    - id: iterate
+      template: gates/implementation/QUALITY_GATE_ITERATE
+      name: Review Results and Iterate
+      enabled: true
+    - id: fest-commit
+      template: gates/implementation/QUALITY_GATE_FEST_COMMIT
+      name: Fest Commit Changes
+      enabled: true
+excluded_patterns:
+  - '*_planning'
+  - '*_research'
+  - '*_requirements'
+  - '*_docs'
+templates:
+  task_default: tasks/SIMPLE
+  prefer_simple: true
+tracking:
+  enabled: true
+  checksum_file: .festival-checksums.json
