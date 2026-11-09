@@ -51,7 +51,7 @@ Each prediction gets a pass rule written before scoring and a simple baseline.
 |---|---|---|---|
 | 1 | 14-day demand per product | M5, UK wholesaler | Retest, fix the low bias if possible |
 | 2 | Demand per product and location | M5 | |
-| 7 | Customers likely to stop buying | H&M | |
+| 7 | Customers likely to stop buying | UK wholesaler (done) | Failed: lost to logistic regression. See RESULT_7.md. Retest on the pilot store only |
 | 3 | Sell-out risk | Pilot store | #1 plus our math. Public data has no stock levels |
 | 5 | Return risk per order | Pilot store | No good public data known |
 
