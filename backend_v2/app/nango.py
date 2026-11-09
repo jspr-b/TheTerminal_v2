@@ -4,9 +4,18 @@ from typing import Protocol
 
 import httpx
 
+# Our import model -> the model name in nango-integrations/shopify-cc/syncs.
+NANGO_MODELS = {"locations": "Location", "products": "Product", "inventory_levels": "InventoryLevel", "customers": "Customer", "orders": "Order"}
+
 
 class RecordSource(Protocol):
     def records(self, integration_id: str, connection_id: str, model: str) -> AsyncIterator[list[dict]]: ...
+
+
+def clean(records: list[dict]) -> list[dict]:
+    """Drop deleted records and Nango's bookkeeping, which changes on every sync."""
+    kept = [r for r in records if (r.get("_nango_metadata") or {}).get("last_action") != "DELETED"]
+    return [{k: v for k, v in r.items() if k != "_nango_metadata"} for r in kept]
 
 
 class NangoClient:
@@ -18,12 +27,13 @@ class NangoClient:
         cursor = None
         async with httpx.AsyncClient(timeout=60) as client:
             while True:
-                params = {"model": model, "limit": 100, **({"cursor": cursor} if cursor else {})}
+                params = {"model": NANGO_MODELS[model], "limit": 100, **({"cursor": cursor} if cursor else {})}
                 resp = await client.get(f"{self.host}/records", headers=headers, params=params)
                 resp.raise_for_status()
                 body = resp.json()
-                if body.get("records"):
-                    yield body["records"]
+                page = clean(body.get("records") or [])
+                if page:
+                    yield page
                 cursor = body.get("next_cursor")
                 if not cursor:
                     return

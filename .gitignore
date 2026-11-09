@@ -20,3 +20,7 @@ experiments/kumo_test/data/
 # Local tools
 .DS_Store
 .superset/
+
+# Nango
+nango-integrations/build/
+nango-integrations/.nango/
