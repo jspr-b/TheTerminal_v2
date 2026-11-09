@@ -26,7 +26,13 @@ A logged-in merchant's Shopify data is imported into backend_v2 through Nango an
 
 ## Phases
 
-- 001_IMPLEMENT: backend, import, retest, mockup.
+- 001_IMPLEMENT: backend, import, retest, mockup, Nango, Kumo forecasts, Command API, Command frontend.
+
+## Decided on 2026-11-09
+
+- Kumo is decided. Backtests inform what we claim and do not block building.
+- The first map shows only what Shopify knows.
+- Command states what is happening: no recommendations about reordering or money, no approve buttons.
 
 ## Out of scope for now
 

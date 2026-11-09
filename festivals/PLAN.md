@@ -1,14 +1,15 @@
 # Plan (2026-11-09)
 
-Goal: the predictions in CLAUDE.md, proven one at a time, with the map as the
-home screen. First version is Shopify only.
+Goal: the predictions in CLAUDE.md, built on Kumo, with the map as the home
+screen. First version is Shopify only. Backtests inform what we claim; they do
+not block building. The build is festival SM0001.
 
 ## Where we are
 - Only #1 (14-day demand) has been tested, on one UK wholesaler from 2011.
   It passed narrowly: experiments/kumo_test/RESULT.md
 - Kumo forecasts run low, and added-up store totals were worse than the baseline.
-- Kumo yes/no predictions run, but none has been scored yet.
-- backend_v2 has the schema and isolation tests. No API or imports yet.
+- #7 (stop buying) lost to a simple baseline on the same shop: RESULT_7.md.
+- backend_v2 has login, OntologyService and a Shopify import, tested with a stand-in for Nango.
 - No new frontend yet. The old one is reference only.
 - No real merchant data. Only a Shopify dev store.
 - Older work is on branch backup/kumo-worktree-2026-11-09 in the old repo,
@@ -60,16 +61,17 @@ Done when: each prediction has a written pass or fail in experiments/.
 
 ### 5. Map, mockup first
 Clickable mockup of the map with forecast ranges and sell-out risk. After the
-owner approves it, build it on the real endpoint. It shows recommendations only.
+owner approves it, build it on the real endpoint. It states what is happening:
+no recommendations about reordering or money. Shopify data only.
 Done when: it runs on dev store data and has been checked in a browser.
 
 ### 6. Pilot
 Connect the pilot store, import its full history, rerun the backtests on it.
-Ship only what passes. Only these results may be claimed to merchants.
+Only these results may be claimed to merchants.
 
 ### 7. More apps, one at a time
 Ads first (#35 is mostly #3 plus which ads are running), then payments, then
-Gorgias. Each one: connect, import, backtest, ship what passes.
+Gorgias. Each one: connect, import, build, backtest to learn what we can claim.
 Ads, Gorgias and most payment predictions need a real store to test on.
 Test #30, #31 and #34 directly, because totals were Kumo's weak spot.
 

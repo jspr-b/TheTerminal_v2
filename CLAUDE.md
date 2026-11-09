@@ -5,6 +5,7 @@ and what's on its way. For Shopify merchants.
 
 ## Status
 First version: Shopify through Nango, Kumo forecasts, the Command map.
+The first map shows only what Shopify knows: locations, stock, deliveries out.
 Later: ads, then payments, then Gorgias, one app at a time. Plan: festivals/PLAN.md
 The old backend is gone. Old frontend is reference only: copy a piece in
 when real data exists for it, and adapt it. Never revive it wholesale.
@@ -24,7 +25,8 @@ festivals/            Plan and decisions
 - Every number on screen is data from a connected app, Kumo, or our own math. Know which.
 - Exact things (totals, stock, approvals) are never predicted.
 - Kumo only, no fallback model. If Kumo is down, forecasts go stale and say so.
-- Command only recommends: no approve or dismiss buttons, nothing is carried out from it.
+- Command states what is happening. No recommendations about reordering or money,
+  no approve or dismiss buttons, nothing is carried out from it.
 - Never auto-execute. Any future action needs the merchant's approval and must be doable through Nango.
 - No manual data entry. Data comes from integrations through Nango.
 - Claim only the accuracy we measured, and name the data it was measured on.
@@ -37,7 +39,7 @@ festivals/            Plan and decisions
 - Do not add product forecasts up into store totals. Kumo tested worse than
   the baseline there.
 - Give Kumo only data from before the prediction date.
-- A new prediction ships only after a backtest against a simple baseline.
+- Kumo is decided. Backtests inform what we claim; they do not block building (D019).
 - Send no names, emails or street addresses.
 - Real merchant data goes to NVIDIA only after the owner confirms (D016).
 - Keys live in backend_v2/.env. Never print or commit them.
@@ -129,8 +131,8 @@ Kumo reads linked tables, so these use several apps at once.
 The map is the home screen and the heart of the product.
 - Import MapGL from react-map-gl/mapbox, always with ssr: false.
 - No symbol layers with text-field. Use HTML markers for labels.
-- Nodes: supplier circle, warehouse rounded square, fulfillment hexagon.
-- Ship dashed via oceanRoute.ts (searoute-ts), air solid great-circle,
+- First version: warehouse rounded square, fulfillment hexagon, deliveries out dotted.
+- Once inbound data exists: supplier circle, and ship dashed via oceanRoute.ts (searoute-ts), air solid great-circle,
   truck dotted. All risk-coloured.
 - One GeoJSON source with per-feature opacity. Each route is one continuous line.
 - Progress: bright and dim halves, both split with turf from the same point.

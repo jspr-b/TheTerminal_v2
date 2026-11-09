@@ -9,5 +9,5 @@
 
 ## Blockers
 
-- Nango key not set: live import cannot run.
+- Nango is being set up with the owner: live import cannot run yet.
 - Map build waits for owner approval of the mockup.
