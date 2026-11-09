@@ -1,5 +1,5 @@
 ---
-fest_working_dir: frontend
+fest_working_dir: .
 fest_type: sequence
 fest_id: 09_command_frontend
 fest_name: command frontend

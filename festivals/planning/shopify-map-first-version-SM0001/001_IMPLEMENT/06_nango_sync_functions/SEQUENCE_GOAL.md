@@ -1,5 +1,5 @@
 ---
-fest_working_dir: nango-integrations
+fest_working_dir: .
 fest_type: sequence
 fest_id: 06_nango_sync_functions
 fest_name: nango sync functions
