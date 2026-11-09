@@ -24,7 +24,8 @@ festivals/            Plan and decisions
 - Every number on screen is data from a connected app, Kumo, or our own math. Know which.
 - Exact things (totals, stock, approvals) are never predicted.
 - Kumo only, no fallback model. If Kumo is down, forecasts go stale and say so.
-- Merchants approve every action. Never auto-execute.
+- Command only recommends: no approve or dismiss buttons, nothing is carried out from it.
+- Never auto-execute. Any future action needs the merchant's approval and must be doable through Nango.
 - No manual data entry. Data comes from integrations through Nango.
 - Claim only the accuracy we measured, and name the data it was measured on.
   Never quote accuracy from the dev store.

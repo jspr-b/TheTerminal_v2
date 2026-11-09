@@ -60,7 +60,7 @@ Done when: each prediction has a written pass or fail in experiments/.
 
 ### 5. Map, mockup first
 Clickable mockup of the map with forecast ranges and sell-out risk. After the
-owner approves it, build it on the real endpoint with merchant approval of actions.
+owner approves it, build it on the real endpoint. It shows recommendations only.
 Done when: it runs on dev store data and has been checked in a browser.
 
 ### 6. Pilot
