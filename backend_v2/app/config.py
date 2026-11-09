@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
     nango_secret_key: str | None = None
     nango_host: str = "https://api.nango.dev"
+    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 
 @lru_cache

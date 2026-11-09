@@ -36,6 +36,29 @@ class OntologyService:
     async def list_locations(self, merchant_id: UUID) -> list[dict]:
         return await self._all("select id, external_id, name, city, province, country, is_active from locations where merchant_id = %s order by name", (merchant_id,))
 
+    async def command_view(self, merchant_id: UUID) -> dict:
+        """Everything the Command map needs. Stock is exact Shopify data."""
+        locations = await self._all(
+            """select l.id, l.name, l.city, l.province, l.country, l.lat, l.lng, l.kind,
+                      coalesce(sum(i.available), 0)::int as units, count(distinct v.product_id)::int as products
+               from locations l
+               left join inventory_levels i on i.merchant_id = l.merchant_id and i.location_id = l.id
+               left join product_variants v on v.merchant_id = i.merchant_id and v.id = i.variant_id
+               where l.merchant_id = %s and l.is_active group by l.id order by l.name""", (merchant_id,))
+        rows = await self._all(
+            """select p.id, p.title, i.location_id, coalesce(sum(i.available), 0)::int as units
+               from products p
+               left join product_variants v on v.merchant_id = p.merchant_id and v.product_id = p.id
+               left join inventory_levels i on i.merchant_id = v.merchant_id and i.variant_id = v.id
+               where p.merchant_id = %s group by p.id, p.title, i.location_id order by p.title""", (merchant_id,))
+        products: dict[UUID, dict] = {}
+        for r in rows:
+            item = products.setdefault(r["id"], {"id": r["id"], "title": r["title"], "units": 0, "by_location": [], "forecast_state": "too_few_sales"})
+            if r["location_id"] is not None:
+                item["units"] += r["units"]
+                item["by_location"].append({"location_id": r["location_id"], "units": r["units"]})
+        return {"locations": locations, "products": list(products.values())}
+
     async def list_import_jobs(self, merchant_id: UUID, limit: int = 50) -> list[dict]:
         return await self._all("select id, model, kind, status, records_done, started_at, finished_at, error from import_jobs where merchant_id = %s order by created_at desc limit %s", (merchant_id, limit))
 

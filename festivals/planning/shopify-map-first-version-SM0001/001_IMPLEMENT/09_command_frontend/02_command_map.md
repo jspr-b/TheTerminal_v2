@@ -24,7 +24,7 @@ Build the map from the approved mockup.
 
 ## Implementation
 
-Follow the Map rules in CLAUDE.md. docs/mockups/command-map.html is the design.
+Follow the Map rules in CLAUDE.md. The design is the 3D globe from the first Terminal (SimpleMapTest.tsx), with new visuals for routes and stock.
 
 ## Done When
 

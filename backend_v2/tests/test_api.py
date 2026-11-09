@@ -84,7 +84,7 @@ def client():
 
 
 def read_paths(shop):
-    return [f"/merchants/{shop.merchant}/products", f"/merchants/{shop.merchant}/locations", f"/merchants/{shop.merchant}/imports"]
+    return [f"/merchants/{shop.merchant}/command", f"/merchants/{shop.merchant}/products", f"/merchants/{shop.merchant}/locations", f"/merchants/{shop.merchant}/imports"]
 
 
 def do_import(client, shop, tag):
@@ -157,6 +157,17 @@ def test_import_shows_only_own_data(client, shops):
     assert titles == ["a shirt"]
     names = [l["name"] for l in client.get(f"/merchants/{b.merchant}/locations", headers=auth(b.user)).json()]
     assert names == ["b warehouse"]
+
+
+def test_command_shows_only_own_stock(client, shops):
+    a, b = shops
+    do_import(client, a, "a")
+    do_import(client, b, "b")
+    body = client.get(f"/merchants/{a.merchant}/command", headers=auth(a.user)).json()
+    assert [l["name"] for l in body["locations"]] == ["a warehouse"]
+    assert [p["title"] for p in body["products"]] == ["a shirt"]
+    assert body["locations"][0]["units"] == 7 and body["products"][0]["units"] == 7
+    assert body["products"][0]["forecast_state"] == "too_few_sales"
 
 
 def test_second_import_adds_nothing(client, shops, db):

@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #080812;
+  color: #e7e7f0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@layer components {
+  .glass {
+    background: rgba(15, 15, 26, 0.92);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .source-chip {
+    @apply ml-1.5 whitespace-nowrap rounded border border-white/10 px-1 text-[10px] text-muted;
+  }
+}
+
+.mapboxgl-ctrl-group {
+  background: rgba(15, 15, 26, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.mapboxgl-ctrl-group button + button {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+.mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
+  filter: invert(1);
+}

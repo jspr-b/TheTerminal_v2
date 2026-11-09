@@ -6,6 +6,7 @@ from uuid import UUID
 
 import jwt
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -14,7 +15,7 @@ from .config import Settings, get_settings
 from .importer import run_import
 from .nango import NangoClient, RecordSource
 from .ontology import OntologyService
-from .schemas import Health, ImportJobOut, ImportStarted, LocationOut, ProductOut
+from .schemas import CommandOut, Health, ImportJobOut, ImportStarted, LocationOut, ProductOut
 
 logging.basicConfig(level=logging.INFO)
 bearer = HTTPBearer(auto_error=False)
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="The Terminal", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=get_settings().cors_origins, allow_methods=["*"], allow_headers=["*"])
 
 
 def get_service(request: Request) -> OntologyService:
@@ -68,6 +70,11 @@ Merchant = Annotated[UUID, Depends(merchant_access)]
 @app.get("/health", response_model=Health)
 async def health() -> Health:
     return Health(status="ok")
+
+
+@app.get("/merchants/{merchant_id}/command", response_model=CommandOut)
+async def command(merchant: Merchant, svc: Service) -> dict:
+    return await svc.command_view(merchant)
 
 
 @app.get("/merchants/{merchant_id}/products", response_model=list[ProductOut])
