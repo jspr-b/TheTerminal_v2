@@ -120,6 +120,7 @@ Kumo reads linked tables, so these use several apps at once.
 - TypeScript strict, Tailwind. Inline styles only for computed values.
 - All calls go through one typed API client. No raw fetch in components.
 - A screen ships only when its endpoint returns real data. No demo data.
+  Mockups (docs/mockups/) may use made-up numbers and must say so on screen.
 - Every page: sidebar left, breadcrumb on top, content right.
   No tab bars or secondary nav.
 

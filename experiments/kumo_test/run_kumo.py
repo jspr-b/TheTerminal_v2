@@ -103,4 +103,6 @@ def main():
     pd.DataFrame(out).to_csv(res / "kumo_predictions_raw.csv", index=False)
     pd.DataFrame(log).to_csv(res / "kumo_run_log.csv", index=False)
     print("predictions", len(out), "batches", len(log), "failures", sum(x["missing"] for x in log))
-main()
+
+if __name__ == "__main__":
+    main()
