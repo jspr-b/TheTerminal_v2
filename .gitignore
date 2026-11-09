@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Kumo experiments: downloaded data and API responses
+experiments/kumo_test/cache/
+experiments/kumo_test/data/
+
+# Local tools
+.DS_Store
+.superset/
