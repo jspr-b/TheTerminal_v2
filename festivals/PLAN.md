@@ -2,7 +2,8 @@
 
 Goal: the predictions in CLAUDE.md, built on Kumo, with the map as the home
 screen. First version is Shopify only. Backtests inform what we claim; they do
-not block building. The build is festival SM0001.
+not block building. The build is festival SM0001. Every Shopify prediction Kumo
+can serve, and the UX for them, is festival KF0001 (kumo-forecasting-ux).
 
 ## Where we are
 - Only #1 (14-day demand) has been tested, on one UK wholesaler from 2011.

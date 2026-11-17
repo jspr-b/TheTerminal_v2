@@ -133,3 +133,6 @@
 {"ts":"2026-04-16T12:52:18.938251Z","event":"move","id":"CC0001","from":"ready","to":"active"}
 {"ts":"2026-11-08T10:23:23.79423Z","event":"create","id":"KN0001","name":"kumo-nango-data-platform","status":"planning"}
 {"ts":"2026-11-09T19:10:20.074548Z","event":"create","id":"SM0001","name":"shopify-map-first-version","status":"planning"}
+{"ts":"2026-11-16T22:45:43.573221Z","event":"create","id":"KF0001","name":"kumo-forecasting-ux","status":"planning"}
+{"ts":"2026-11-16T23:47:34.36029Z","event":"move","id":"KF0001","from":"planning","to":"ready"}
+{"ts":"2026-11-16T23:47:36.88899Z","event":"move","id":"KF0001","from":"ready","to":"active"}

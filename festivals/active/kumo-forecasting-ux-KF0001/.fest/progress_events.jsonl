@@ -1,0 +1,8 @@
+{"ts":"2026-11-16T23:47:41.346913Z","event":"completed","task":"001_IMPLEMENT/01_prediction_map/01_map_ideas_to_tasks.md"}
+{"ts":"2026-11-16T23:47:41.41739Z","event":"blocked","task":"001_IMPLEMENT/01_prediction_map/02_runtime_decision.md","reason":"Owner must read the OpenMDW-1.1 licence and decide D016: hosted Kumo, local weights, or both"}
+{"ts":"2026-11-16T23:52:17.348901Z","event":"completed","task":"001_IMPLEMENT/02_ux_mockups/01_command_timeline.md"}
+{"ts":"2026-11-16T23:52:17.474988Z","event":"completed","task":"001_IMPLEMENT/02_ux_mockups/02_product_page.md"}
+{"ts":"2026-11-16T23:52:17.6019Z","event":"completed","task":"001_IMPLEMENT/02_ux_mockups/03_customers_page.md"}
+{"ts":"2026-11-16T23:52:17.676655Z","event":"completed","task":"001_IMPLEMENT/02_ux_mockups/04_states_and_sources.md"}
+{"ts":"2026-11-16T23:52:22.249136Z","event":"blocked","task":"001_IMPLEMENT/02_ux_mockups/05_command_heatmaps.md","reason":"Owner decides the demand heatmap (one product at a time, or wait for the city totals test) and clicks through docs/mockups/command-heatmaps.html"}
+{"ts":"2026-11-16T23:57:03.244521Z","event":"completed","task":"001_IMPLEMENT/03_local_kumo/01_local_forecaster.md"}

@@ -24,6 +24,10 @@ quality_gates:
       template: gates/implementation/QUALITY_GATE_TESTING
       name: Testing and Verification
       enabled: true
+    - id: rea-audit
+      template: gates/implementation/QUALITY_GATE_REA_AUDIT
+      name: Shipped Bundle Audit (REA)
+      enabled: true
     - id: review
       template: gates/implementation/QUALITY_GATE_REVIEW
       name: Code Review
