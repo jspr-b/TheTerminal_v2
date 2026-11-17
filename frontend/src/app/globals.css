@@ -23,6 +23,9 @@ body {
   .source-chip {
     @apply ml-1.5 whitespace-nowrap rounded border border-white/10 px-1 text-[10px] text-muted;
   }
+  .stale-tag {
+    @apply ml-1.5 whitespace-nowrap rounded border border-amber-400/35 px-1 text-[10px] font-semibold text-amber-400;
+  }
 }
 
 .mapboxgl-ctrl-group {

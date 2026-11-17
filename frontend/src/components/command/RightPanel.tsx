@@ -1,4 +1,23 @@
-import type { CommandLocation, CommandView } from "@/lib/api";
+import type { CommandLocation, CommandProduct, CommandView } from "@/lib/api";
+
+/** What the 14-day forecasts can say right now: stale, ranges, or nothing yet. */
+function ForecastNote({ products }: { products: CommandProduct[] }) {
+  const stale = products.filter((p) => p.forecast_state === "stale").length;
+  const fresh = products.filter((p) => p.forecast_state === "forecast").length;
+  if (stale > 0) {
+    return (
+      <div className="mt-4 rounded-lg border border-white/10 p-2.5">
+        <b>Forecasts are stale</b>
+        <p className="mt-1 text-xs text-muted">
+          Kumo did not answer the latest run. {stale} product{stale === 1 ? " still shows its" : "s still show their"} last range.
+          <span className="source-chip">Kumo</span>
+        </p>
+      </div>
+    );
+  }
+  if (fresh > 0) return <div className="mt-4 text-xs text-muted">14-day estimates are shown as ranges in Products.</div>;
+  return <div className="mt-4 text-xs text-muted">Too few sales to predict yet.</div>;
+}
 
 function Stat({ label, source, value }: { label: string; source: string; value: string }) {
   return (
@@ -43,7 +62,7 @@ export default function RightPanel({ data, location, unplaced, onBack }: { data:
       <Stat label="Locations" source="Shopify" value={data.locations.length.toLocaleString()} />
       <Stat label="Products" source="Shopify" value={data.products.length.toLocaleString()} />
       <Stat label="Units in stock" source="Shopify" value={units.toLocaleString()} />
-      <div className="mt-4 text-xs text-muted">Too few sales to predict yet.</div>
+      <ForecastNote products={data.products} />
       {unplaced > 0 && <div className="mt-2 text-xs text-muted">{unplaced} location{unplaced === 1 ? " has" : "s have"} no city in Shopify, so {unplaced === 1 ? "it isn't" : "they aren't"} on the map.</div>}
     </aside>
   );

@@ -1,12 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import MapGL, { Marker, NavigationControl, type MapRef } from "react-map-gl/mapbox";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import MapGL, { Layer, Marker, NavigationControl, Source, type HeatmapLayerSpecification, type MapRef } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN, type CommandLocation } from "@/lib/api";
 
 export interface PlacedLocation extends CommandLocation {
   position: [number, number];
+}
+
+/** City-level heat: one point per city, weight 0-1. Ramp runs from transparent to the hottest colour. */
+export interface HeatmapData {
+  points: { position: [number, number]; weight: number }[];
+  ramp: [string, string, string, string];
+}
+
+interface HeatCollection {
+  type: "FeatureCollection";
+  features: { type: "Feature"; geometry: { type: "Point"; coordinates: [number, number] }; properties: { w: number } }[];
 }
 
 type Side = "right" | "left" | "top" | "bottom";
@@ -38,7 +49,17 @@ function NodeShape({ kind, size }: { kind: string; size: number }) {
 
 const sizeFor = (units: number, max: number) => 20 + (max > 0 ? Math.sqrt(units / max) * 14 : 0);
 
-export default function GlobeMap({ locations, selected, onSelect }: { locations: PlacedLocation[]; selected: string | null; onSelect: (id: string | null) => void }) {
+export default function GlobeMap({
+  locations,
+  selected,
+  onSelect,
+  heatmap = null,
+}: {
+  locations: PlacedLocation[];
+  selected: string | null;
+  onSelect: (id: string | null) => void;
+  heatmap?: HeatmapData | null;
+}) {
   const mapRef = useRef<MapRef | null>(null);
   const [sides, setSides] = useState<Record<string, Side>>({});
   const [ready, setReady] = useState(false);
@@ -106,6 +127,28 @@ export default function GlobeMap({ locations, selected, onSelect }: { locations:
 
   const maxUnits = Math.max(0, ...locations.map((l) => l.units));
 
+  const heatData = useMemo<HeatCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: (heatmap?.points ?? []).map((p) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: p.position },
+        properties: { w: p.weight },
+      })),
+    }),
+    [heatmap],
+  );
+  const heatPaint = useMemo<HeatmapLayerSpecification["paint"]>(() => {
+    const r = heatmap?.ramp ?? ["rgba(0,0,0,0)", "#000", "#000", "#000"];
+    return {
+      "heatmap-weight": ["get", "w"],
+      "heatmap-intensity": 1.2,
+      "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 2, 28, 6, 60],
+      "heatmap-opacity": 0.85,
+      "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, r[0], 0.3, r[1], 0.65, r[2], 1, r[3]],
+    };
+  }, [heatmap]);
+
   return (
     <MapGL
       ref={mapRef}
@@ -122,6 +165,12 @@ export default function GlobeMap({ locations, selected, onSelect }: { locations:
       minPitch={0}
     >
       <NavigationControl position="top-left" showCompass={false} />
+      {/* Drawn on the map canvas, so it always sits below the HTML markers and labels. */}
+      {ready && heatmap && heatmap.points.length > 0 && (
+        <Source id="heat-cities" type="geojson" data={heatData}>
+          <Layer id="heat" type="heatmap" paint={heatPaint} />
+        </Source>
+      )}
       {locations.map((l) => {
         const dim = selected !== null && selected !== l.id;
         return (

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CommandProduct } from "@/lib/api";
+import { WillSell } from "@/components/shared/Forecast";
 
 export default function ProductDrawer({ products, selected }: { products: CommandProduct[]; selected: string | null }) {
   const [open, setOpen] = useState(false);
@@ -25,7 +26,10 @@ export default function ProductDrawer({ products, selected }: { products: Comman
               <tr className="sticky top-0 bg-[#12121f] text-left text-muted">
                 <th className="px-3.5 py-1.5 font-medium">Product</th>
                 <th className="px-2 py-1.5 font-medium">Stock<span className="source-chip">Shopify</span></th>
-                <th className="px-2 py-1.5 font-medium">Will sell, 14 days<span className="source-chip">Kumo</span></th>
+                {/* Forecasts are per product across the store; per-location demand (#2) is not built. */}
+                <th className="px-2 py-1.5 font-medium">
+                  Will sell, 14 days{selected && ", all locations"}<span className="source-chip">Kumo</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -33,7 +37,7 @@ export default function ProductDrawer({ products, selected }: { products: Comman
                 <tr key={p.id} className="border-t border-white/10">
                   <td className="max-w-[320px] truncate px-3.5 py-1.5">{p.title}</td>
                   <td className="px-2 py-1.5">{p.shown.toLocaleString()}</td>
-                  <td className="px-2 py-1.5 italic text-muted">too few sales to predict</td>
+                  <td className="px-2 py-1.5"><WillSell p={p} /></td>
                 </tr>
               ))}
             </tbody>
