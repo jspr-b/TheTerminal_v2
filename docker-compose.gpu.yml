@@ -1,0 +1,51 @@
+# Everything that needs a GPU. Run on a machine with an NVIDIA GPU and the NVIDIA Container Toolkit:
+#   docker compose -f docker-compose.gpu.yml up -d --build            # Kumo Forecast + Kumo Anomaly
+#   docker compose -f docker-compose.gpu.yml --profile nim up -d      # also Kumo Tabular as a NIM (needs NGC_API_KEY)
+# Then point the backend at it in backend_v2/.env:
+#   KUMO_GPU_URL=http://<gpu-host>:8101
+#   KUMO_GPU_ANOMALY_URL=http://<gpu-host>:8102
+# Keep these ports on a private network: the workers have no login of their own.
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
+
+services:
+  kumo-forecast:
+    <<: *gpu
+    build:
+      context: gpu_worker
+      args: { MODEL: forecast, KUMO_TS_PACKAGE: Kumo-Forecast }
+    image: terminal/kumo-forecast-worker
+    ports: ["127.0.0.1:8101:8000"]
+    volumes: ["kumo-models:/models"]
+    restart: unless-stopped
+
+  kumo-anomaly:
+    <<: *gpu
+    build:
+      context: gpu_worker
+      args: { MODEL: anomaly, KUMO_TS_PACKAGE: Kumo-Anomaly }
+    image: terminal/kumo-anomaly-worker
+    ports: ["127.0.0.1:8102:8000"]
+    volumes: ["kumo-models:/models"]
+    restart: unless-stopped
+
+  # Kumo Tabular as NVIDIA's own container (image from build.nvidia.com, 2026-11-17).
+  # Optional: hosted Kumo Tabular works without a GPU. Login first: docker login nvcr.io (user $oauthtoken).
+  kumo-tabular:
+    <<: *gpu
+    profiles: ["nim"]
+    image: nvcr.io/nim/nvidia/kumo-tabular:1.0.0
+    environment: { NGC_API_KEY: "${NGC_API_KEY:-}" }
+    shm_size: 16gb
+    ports: ["127.0.0.1:8103:8000"]
+    restart: unless-stopped
+
+volumes:
+  kumo-models:
