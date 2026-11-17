@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Terminal: states and sources sheet</title>
+<style>
+:root{--water:#080812;--land:#0f0f1a;--border:#2a2a3e;--line:rgba(255,255,255,.08);--text:#e7e7f0;--muted:#8d8da6;--low:#34d399;--medium:#fbbf24;--high:#f87171;--accent:#7c8cff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--water);color:var(--text);font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{height:44px;display:flex;align-items:center;gap:8px;padding:0 24px;border-bottom:1px solid var(--border);color:var(--muted);position:sticky;top:0;background:var(--water);z-index:1}
+.top b{color:var(--text);font-weight:550}.top a{color:var(--muted);text-decoration:none}
+.mock{margin-left:auto;font-size:11px;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+main{padding:20px 24px 60px;max-width:1080px}
+h1{font-size:18px;margin:0 0 2px;font-weight:600}.sub{color:var(--muted);font-size:12px}
+h2{font-size:15px;font-weight:600;margin:34px 0 4px;padding-top:20px;border-top:1px solid var(--border)}
+p{margin:0 0 12px;color:var(--muted);max-width:75ch}
+table{width:100%;border-collapse:collapse}
+th{color:var(--muted);font-weight:500;text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{white-space:nowrap;font-weight:550}td.why{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums;font-weight:600}
+.chip{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:5px;white-space:nowrap;font-weight:400}
+.risk{font-weight:600}.risk.low{color:var(--low)}.risk.medium{color:var(--medium)}.risk.high{color:var(--high)}
+.stale{font-size:10px;font-weight:600;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:0 5px;margin-left:6px}
+.old{color:var(--muted)}.few{color:var(--muted);font-style:italic}
+.skel{display:inline-block;width:64px;height:12px;border-radius:3px;background:linear-gradient(90deg,#1a1a2c 25%,#26263c 50%,#1a1a2c 75%);background-size:200% 100%;animation:sk 1.2s linear infinite;vertical-align:middle}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+.err{color:var(--high)}
+.track{position:relative;height:40px;cursor:pointer;touch-action:none;max-width:560px;margin:6px 8px}
+.rail{position:absolute;left:0;right:0;top:12px;height:2px;background:var(--border)}
+.fill{position:absolute;left:0;top:12px;height:2px;background:var(--accent)}
+.thumb{position:absolute;top:6px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translateX(-50%);box-shadow:0 0 0 3px rgba(124,140,255,.25)}
+.tick{position:absolute;top:24px;font-size:10px;color:var(--muted);transform:translateX(-50%)}.tick.on{color:var(--text);font-weight:600}
+kbd{font:11px ui-monospace,Menlo,monospace;border:1px solid var(--border);border-radius:4px;padding:1px 5px;background:var(--land);color:var(--text)}
+ul{margin:0 0 12px;padding-left:18px;color:var(--muted);max-width:75ch}li{margin:3px 0}li b,p b{color:var(--text);font-weight:550}
+#said{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="top"><a href="command-map.html">Command</a><span>/</span><b>States and sources</b><span class="mock">Reference sheet: made-up numbers</span></div>
+<main>
+<h1>States and sources</h1>
+<div class="sub">How every prediction looks in every state. Later screens point here instead of deciding again.</div>
+
+<h2>1. States</h2>
+<p>Shown for a range (will sell, 14 days) and a band (sell-out risk). The cell is what sits in a table or a tile.</p>
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">Range cell</th><th scope="col">Band cell</th><th scope="col">When, and what it says</th></tr></thead>
+<tbody>
+<tr><td>Fresh</td><td><span class="num">96–164</span></td><td><span class="risk medium">Medium</span></td><td class="why">The latest Kumo run answered. No tag.</td></tr>
+<tr><td>Stale</td><td><span class="num old">60–110</span><span class="stale">stale</span></td><td><span class="risk medium">Medium</span><span class="stale">stale</span></td><td class="why">Kumo did not answer the latest run, or the last result is older than the agreed age (not set yet, see 03_local_kumo). The old number stays, greyed, with the tag. Hover, focus or the page notice gives the date: "Kumo did not answer the latest run. This range is from 15 Nov." Anything worked out from a stale number is stale too.</td></tr>
+<tr><td>Too few sales</td><td colspan="2"><span class="few">too few sales to predict</span></td><td class="why">Fewer than 3 separate orders in 8 weeks. No number, no band, no colour. Exact Shopify numbers (stock) still show.</td></tr>
+<tr><td>Loading</td><td><span class="skel" role="status" aria-label="Loading"></span></td><td><span class="skel" role="status" aria-label="Loading"></span></td><td class="why">First load only. A grey bar the size of the value. The day slider never causes it: all 15 days arrive in one answer.</td></tr>
+<tr><td>Error</td><td colspan="2"><span class="err">Could not load.</span> <span class="old">Try again</span></td><td class="why">Our own server failed, so we do not know the state. Says so, offers one retry. Never shows an old number without the stale tag.</td></tr>
+<tr><td>No forecast yet</td><td colspan="2"><span class="old">No forecast yet</span></td><td class="why">Kumo has never answered for this store. Not an error and not stale: there is nothing old to show.</td></tr>
+<tr><td>Not connected</td><td colspan="2"><span class="old">Connect Shopify checkouts to see this</span></td><td class="why">The data this prediction needs is not synced. Names the app or the data to connect. No number.</td></tr>
+</tbody></table>
+
+<h2>2. Range, band, exact number</h2>
+<table>
+<thead><tr><th scope="col">Kind</th><th scope="col">Looks like</th><th scope="col">Rule</th></tr></thead>
+<tbody>
+<tr><td>Range</td><td><span class="num">96–164</span><span class="chip">Kumo</span></td><td class="why">Every forecast of an amount. Two numbers with an en dash, never one. Rounded outward: the low end down, the high end up. Drawn as a bar or band from low to high, never a single line.</td></tr>
+<tr><td>Band</td><td><span class="risk low">Low</span> &nbsp;<span class="risk medium">Medium</span> &nbsp;<span class="risk high">High</span><span class="chip">Our math</span></td><td class="why">Every likelihood. A word, never a percent. Colour repeats the word and is never the only signal. Red, amber and green only where high is bad (sell-out, returns, delays). Where high is neutral or good (customers likely to order again), one colour in three strengths.</td></tr>
+<tr><td>Count per band</td><td><span class="num">14</span> high · <span class="num">38</span> medium · <span class="num">96</span> low<span class="chip">Kumo</span></td><td class="why">Customer predictions. How many customers sit in each band per region, never a list of people. Regions under 5 customers are merged into "Other regions".</td></tr>
+<tr><td>Ordered list</td><td>1 Leather Belt · 2 Wool Scarf<span class="chip">Kumo</span></td><td class="why">Rankings. Most likely first, no scores.</td></tr>
+<tr><td>Exact number</td><td><span class="num">148</span><span class="chip">Shopify</span></td><td class="why">Stock, orders, deliveries. One number, plain weight, no tag. Never predicted.</td></tr>
+</tbody></table>
+
+<h2>3. Source chips</h2>
+<table>
+<thead><tr><th scope="col">Chip</th><th scope="col">Means</th></tr></thead>
+<tbody>
+<tr><td><span class="chip" style="margin:0">Shopify</span></td><td class="why">Read from Shopify as it is. Exact.</td></tr>
+<tr><td><span class="chip" style="margin:0">Kumo</span></td><td class="why">A Kumo forecast. Always a range, a band, a count per band or an ordered list.</td></tr>
+<tr><td><span class="chip" style="margin:0">Our math</span></td><td class="why">Worked out by us from Shopify numbers and Kumo ranges, such as stock after day N and sell-out risk. Stale when its Kumo input is stale.</td></tr>
+</tbody></table>
+<p style="margin-top:12px">The chip sits in the column header for a table and next to the label for a single value. One chip per number.</p>
+
+<h2>4. Day slider: keyboard and screen reader</h2>
+<p>Try it. It is one tab stop with the slider role.</p>
+<div class="track" id="track" tabindex="0" role="slider" aria-label="Day" aria-valuemin="0" aria-valuemax="14"><div class="rail"></div><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div><div id="ticks"></div></div>
+<p>A screen reader says: <span id="said"></span></p>
+<ul>
+<li><kbd>←</kbd> <kbd>→</kbd> move one day. <kbd>Home</kbd> is today, <kbd>End</kbd> is day 14. Dragging and clicking the track do the same.</li>
+<li>The spoken value is the day and its date, not a bare number.</li>
+<li>Moving the slider makes no request. Numbers that change with the day sit in a polite live region, so they are read after the value, once.</li>
+<li>The focus ring is always visible. Tick labels sit exactly under their day.</li>
+</ul>
+
+<h2>5. Tables: keyboard and screen reader</h2>
+<ul>
+<li>Real table markup: column headers with <b>scope</b>, the source chip inside the header so it is read with the column name.</li>
+<li>A row that opens something is one tab stop and opens with <kbd>Enter</kbd>. The row's first cell is its name.</li>
+<li>Tags are read as words: "60 to 110, stale". "Too few sales to predict" is text in the cell, not an empty cell.</li>
+<li>Charts have a "Show as table" switch with the same numbers.</li>
+<li>Filters are labelled dropdowns. Changing one keeps focus on it. An empty result says "No products match these filters."</li>
+</ul>
+</main>
+<script>
+const $=id=>document.getElementById(id);let day=0;
+const dateOf=d=>new Date(2026,10,16+d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+function draw(){const pct=day/14*100;$('thumb').style.left=pct+'%';$('fill').style.width=pct+'%';const t=`Day ${day}, ${dateOf(day)}`;$('track').setAttribute('aria-valuenow',day);$('track').setAttribute('aria-valuetext',t);$('said').textContent=`"Day, slider, ${t}"`;let h='';for(let i=0;i<=14;i++)h+=`<span class="tick${i===day?' on':''}" style="left:${i/14*100}%">${i}</span>`;$('ticks').innerHTML=h}
+function set(d){day=Math.max(0,Math.min(14,d));draw()}
+const trk=$('track'),fromEvent=e=>{const r=trk.getBoundingClientRect();set(Math.round((e.clientX-r.left)/r.width*14))};
+trk.addEventListener('pointerdown',e=>{trk.setPointerCapture(e.pointerId);fromEvent(e)});trk.addEventListener('pointermove',e=>{if(e.buttons)fromEvent(e)});
+trk.addEventListener('keydown',e=>{const n={ArrowRight:day+1,ArrowLeft:day-1,Home:0,End:14}[e.key];if(n!==undefined){e.preventDefault();set(n)}});
+draw();
+</script>
+</body>
+</html>

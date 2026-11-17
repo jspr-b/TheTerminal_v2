@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Terminal: Customers mockup</title>
+<style>
+:root{--water:#080812;--land:#0f0f1a;--border:#2a2a3e;--line:rgba(255,255,255,.08);--text:#e7e7f0;--muted:#8d8da6;--low:#34d399;--medium:#fbbf24;--high:#f87171;--accent:#7c8cff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--water);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;overflow:hidden}
+button,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sidebar{width:240px;flex:none;background:var(--land);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 10px}
+.brand{font-weight:650;padding:4px 8px 16px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;color:var(--muted)}
+.nav.on{background:rgba(124,140,255,.14);color:var(--text)}
+.nav i{width:16px;height:16px;flex:none;border:1.5px solid currentColor;border-radius:4px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crumb{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--border);color:var(--muted)}
+.crumb b{color:var(--text);font-weight:550}
+.mock{margin-left:auto;font-size:11px;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+.content{flex:1;overflow:auto;padding:20px 24px 40px}
+h1{font-size:18px;margin:0 0 2px;font-weight:600}.sub{color:var(--muted);font-size:12px}
+h2{font-size:15px;font-weight:600;margin:0}
+section{border-top:1px solid var(--border);padding:20px 0 6px;margin-top:20px}
+.head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.what{color:var(--muted);font-size:12px;margin:3px 0 12px;max-width:70ch}
+.chip{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:5px;white-space:nowrap;font-weight:400}
+.stale{font-size:10px;font-weight:600;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:0 5px}
+.filters{margin:14px 0 0}
+.filters label{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}
+select{background:var(--land);border:1px solid var(--border);border-radius:6px;padding:5px 8px}
+table{width:100%;border-collapse:collapse;font-size:13px;max-width:880px}
+th{color:var(--muted);font-weight:500;text-align:left;padding:7px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+th.n,td.n{text-align:right;width:110px}
+td.bar{width:36%}
+.split{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--border);gap:1px}
+.split i{display:block}.split .high{background:#7c8cff}.split .medium{background:rgba(124,140,255,.55)}.split .low{background:rgba(124,140,255,.25)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.few{color:var(--muted);font-style:italic}
+.state{border:1px dashed var(--border);border-radius:8px;padding:12px 14px;color:var(--muted);max-width:880px}
+.state b{color:var(--text)}
+ol{margin:0;padding:0;list-style:none;counter-reset:n;max-width:440px}
+ol li{counter-increment:n;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px}
+ol li:before{content:counter(n);color:var(--muted);width:14px}
+.q{border:1px solid rgba(124,140,255,.4);border-radius:8px;padding:12px 14px;margin-top:24px;max-width:880px}
+.q b{display:block;margin-bottom:4px}
+@media (max-width:900px){.sidebar{width:64px}.sidebar span{display:none}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><span>The Terminal</span></div>
+  <a class="nav" href="command-map.html"><i></i><span>Command</span></a>
+  <a class="nav" href="products.html"><i></i><span>Products</span></a>
+  <a class="nav on" href="customers.html"><i></i><span>Customers</span></a>
+  <span class="nav" title="No mockup yet"><i></i><span>Connections</span></span>
+</aside>
+<div class="main">
+  <div class="crumb"><b>Customers</b><span class="mock">Mockup: made-up numbers</span></div>
+  <main class="content">
+    <h1>Customers</h1>
+    <div class="sub">Next 14 days, in groups per region. This page never shows who a customer is.</div>
+    <div class="filters"><label>Region <select id="region"></select></label></div>
+    <div id="out"></div>
+    <div class="q"><b>Open question for the owner</b>Should a group link to its customers in Shopify admin? Today it does not: the app shows counts only, and the merchant looks people up in Shopify.</div>
+  </main>
+</div>
+<script>
+// Made-up counts of customers per band, per region. Regions under 5 customers are left off and counted under "Other regions".
+const REGIONS=['Île-de-France','Greater London','Berlin','Lombardy','Madrid','Other regions'];
+const DATA={
+ first:{title:'First-time buyers likely to order again',what:'Customers whose first order was in the last 30 days, by how likely a second order is within 14 days.',rows:[[14,38,96],[9,31,120],[11,22,61],[4,12,40],[3,9,33],[6,21,88]]},
+ discount:{title:'Customers likely to buy only with a discount',what:'Customers with an order in the last 90 days, by how likely their next order within 14 days uses a discount.',rows:[[41,60,210],[52,71,260],[19,40,150],[12,18,70],[8,15,62],[20,44,170]],stale:'15 Nov'},
+ checkout:{title:'Abandoned checkouts likely to come back',what:'Open checkouts from the last 7 days, by how likely they are completed within 14 days.',state:'connect',msg:'<b>Not connected.</b> Shopify checkouts are not synced yet, so there is nothing to show.'},
+ stop:{title:'Customers likely to stop buying',what:'',state:'hidden',msg:'<b>Hidden.</b> This prediction lost to a simple baseline in our test, so it is not shown. It stays hidden until it passes.'}};
+const NEXT=['Leather Belt','Linen Shirt','Canvas Tote','Wool Scarf','Ceramic Mug'];
+const chip=t=>`<span class="chip">${t}</span>`,sel=document.getElementById('region');
+sel.innerHTML='<option value="">All regions</option>'+REGIONS.map((r,i)=>`<option value="${i}">${r}</option>`).join('');
+function bands(d){const idx=sel.value===''?REGIONS.map((_,i)=>i):[+sel.value];const stale=d.stale?` <span class="stale" title="Kumo did not answer the latest run. These counts are from ${d.stale}.">stale, from ${d.stale}</span>`:'';
+ return `<table><caption class="sub" style="text-align:left;caption-side:bottom;padding-top:6px">Counts of customers, never a list of people.${chip('Kumo')}${stale}</caption><thead><tr><th scope="col">Region</th><th scope="col" class="n"><span class="dot" style="background:#7c8cff"></span>High</th><th scope="col" class="n"><span class="dot" style="background:rgba(124,140,255,.55)"></span>Medium</th><th scope="col" class="n"><span class="dot" style="background:rgba(124,140,255,.25)"></span>Low</th><th scope="col"><span style="position:absolute;left:-9999px">Share per band</span></th></tr></thead><tbody>${idx.map(i=>{const [h,m,l]=d.rows[i],t=h+m+l;return `<tr><th scope="row" style="color:var(--text);border-bottom:1px solid var(--line)">${REGIONS[i]}</th><td class="n">${h}</td><td class="n">${m}</td><td class="n">${l}</td><td class="bar"><div class="split" role="img" aria-label="${h} high, ${m} medium, ${l} low"><i class="high" style="width:${h/t*100}%"></i><i class="medium" style="width:${m/t*100}%"></i><i class="low" style="width:${l/t*100}%"></i></div></td></tr>`}).join('')}</tbody></table>`}
+function render(){let h='';for(const d of Object.values(DATA)){h+=`<section><div class="head"><h2>${d.title}</h2></div>${d.what?`<div class="what">${d.what}</div>`:'<div class="what"></div>'}${d.state?`<div class="state">${d.msg}</div>`:bands(d)}</section>`}
+ h+=`<section><div class="head"><h2>Products customers are most likely to buy next</h2></div><div class="what">Across ${sel.value===''?'all regions':REGIONS[+sel.value]}, most likely first. Kumo gives an order, not a number.${chip('Kumo')}</div><ol>${(sel.value===''?NEXT:[...NEXT.slice(+sel.value%5),...NEXT.slice(0,+sel.value%5)]).map(n=>`<li>${n}</li>`).join('')}</ol></section>`;
+ document.getElementById('out').innerHTML=h}
+sel.addEventListener('change',render);render();
+</script>
+</body>
+</html>

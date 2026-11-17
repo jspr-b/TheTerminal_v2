@@ -8,7 +8,7 @@
 :root{--water:#080812;--land:#0f0f1a;--border:#2a2a3e;--panel:rgba(15,15,26,.92);--line:rgba(255,255,255,.08);--text:#e7e7f0;--muted:#8d8da6;--low:#34d399;--medium:#fbbf24;--high:#f87171;--accent:#7c8cff}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
 body{background:var(--water);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;overflow:hidden}
-button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}a{color:inherit;text-decoration:none}
 button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sidebar{width:240px;flex:none;background:var(--land);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 10px;transition:width .2s ease}
 .sidebar.collapsed{width:64px}
@@ -43,6 +43,7 @@ svg#map{position:absolute;inset:0;width:100%;height:100%}
 .fill{position:absolute;left:0;top:12px;height:2px;background:var(--accent)}
 .thumb{position:absolute;top:6px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translateX(-50%);box-shadow:0 0 0 3px rgba(124,140,255,.25)}
 .tick{position:absolute;top:24px;font-size:10px;color:var(--muted);transform:translateX(-50%)}.tick.on{color:var(--text);font-weight:600}
+.curve{position:relative;height:60px;margin-top:6px}.curve svg{display:block;width:100%;height:100%}.curve .out{position:absolute;bottom:0;line-height:13px;font-size:10px;color:var(--high);white-space:nowrap;text-shadow:0 1px 3px #000}.curve .out.end{transform:translateX(-100%)}
 .drawer{border-radius:10px;overflow:hidden;display:flex;flex-direction:column;height:44px}
 .drawer.open{height:280px}
 .dr-head{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px;width:100%;font-weight:550}
@@ -53,6 +54,7 @@ th{position:sticky;top:0;background:#12121f;color:var(--muted);font-weight:500;t
 td{padding:7px 8px;border-top:1px solid var(--line);white-space:nowrap}
 tr.row{cursor:pointer}tr.row:hover td{background:rgba(255,255,255,.03)}tr.sel td{background:rgba(124,140,255,.12)}
 .few{color:var(--muted);font-style:italic}
+.stale-range{color:var(--muted)}.stale{font-size:10px;font-weight:600;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:0 5px;margin-left:6px}
 @keyframes pulse{0%{r:8;opacity:.8}100%{r:20;opacity:0}}.pulse{animation:pulse 1.8s ease-out infinite}
 @media (prefers-reduced-motion:reduce){.pulse{animation:none}}
 </style>
@@ -60,21 +62,22 @@ tr.row{cursor:pointer}tr.row:hover td{background:rgba(255,255,255,.03)}tr.sel td
 <body>
 <aside class="sidebar" id="sidebar">
   <div class="brand"><span>The Terminal</span></div>
-  <button class="nav on"><i></i><span>Command</span></button>
-  <button class="nav"><i></i><span>Products</span></button>
-  <button class="nav"><i></i><span>Actions</span></button>
-  <button class="nav"><i></i><span>Data</span></button>
+  <a class="nav on" href="command-map.html"><i></i><span>Command</span></a>
+  <a class="nav" href="products.html"><i></i><span>Products</span></a>
+  <a class="nav" href="customers.html"><i></i><span>Customers</span></a>
+  <span class="nav" title="No mockup yet"><i></i><span>Connections</span></span>
   <div class="spacer"></div>
   <button class="nav" id="collapse"><i></i><span>Collapse</span></button>
 </aside>
 <div class="main">
-  <div class="crumb"><span>Command</span><span id="crumb"></span><span class="mock">Mockup: made-up numbers</span></div>
+  <div class="crumb"><span>Command</span><span id="crumb"></span><span class="mock">Mockup: made-up numbers. Flat map stands in for the 3D globe</span></div>
   <div class="stage" id="stage">
     <svg id="map" role="img" aria-label="Map of locations and deliveries"></svg>
     <div id="labels"></div>
     <div class="dock">
       <div class="timeline glass">
-        <div class="tl-head"><span>Day <b id="dayNow">0</b> of 14</span><span>Deliveries and stock by day</span></div>
+        <div class="tl-head"><span>Day <b id="dayNow">0</b> of 14 <span id="dateNow"></span></span><span id="tlNote"></span></div>
+        <div class="curve" id="curve" hidden></div>
         <div class="track" id="track" tabindex="0" role="slider" aria-label="Day" aria-valuemin="0" aria-valuemax="14">
           <div class="rail"></div><div class="fill" id="fill"></div><div class="thumb" id="thumb"></div><div id="ticks"></div>
         </div>
@@ -102,18 +105,27 @@ const delivery=(id,from,at,city,start,arrive,qty,product)=>({id,mode:'Delivery',
 const SHIP=[delivery('F-2201','rotterdam',RTM,'London',-1,2,3,'shirt'),delivery('F-2202','rotterdam',RTM,'Paris',0,1,2,'belt'),delivery('F-2203','lyon',LYS,'Madrid',0,3,1,'mug'),delivery('F-2204','lyon',LYS,'Milan',-1,1,2,'mug'),delivery('F-2205','berlin',BER,'Vienna',0,2,4,'tote'),delivery('F-2206','berlin',BER,'Warsaw',1,4,2,'scarf')];
 const PRODUCTS=[
  {id:'tote',name:'Canvas Tote',stock:62,range:[110,190],node:'berlin'},
- {id:'belt',name:'Leather Belt',stock:95,range:[60,110],node:'rotterdam'},
+ {id:'belt',name:'Leather Belt',stock:95,range:[60,110],node:'rotterdam',stale:'15 Nov'},
  {id:'shirt',name:'Linen Shirt',stock:148,range:[96,164],node:'rotterdam'},
  {id:'mug',name:'Ceramic Mug',stock:20,range:[44,72],node:'lyon'},
  {id:'scarf',name:'Wool Scarf',stock:240,range:[12,30],node:'berlin'},
  {id:'print',name:'Limited Print',stock:9,range:null,node:'lyon'}];
 const S={day:0,sel:null,drawer:false};const $=id=>document.getElementById(id);
 const COLOR={low:'#34d399',medium:'#fbbf24',high:'#f87171'};
-const level=(p,d,perDay)=>Math.max(0,p.stock-perDay*d);
-function runsOut(p,perDay){for(let i=1;i<=14;i++)if(p.stock-perDay*i<=0)return i;return null}
-function riskOf(p){if(!p.range)return null;const top=runsOut(p,p.range[1]/14),mid=runsOut(p,(p.range[0]+p.range[1])/28);return top&&mid?'high':top?'medium':'low'}
-const rangeText=p=>p.range?`${p.range[0]}–${p.range[1]}`:'';
-function stockAt(p,d){const lo=Math.round(level(p,d,p.range[1]/14)),hi=Math.round(level(p,d,p.range[0]/14));return lo===hi?`${lo}`:`${lo}–${hi}`}
+// Per-day ranges, as the per-day Kumo forecast would return them: one [low, high] per day 1-14. Made up here from a weekly shape.
+const SHAPE=[.9,.85,.9,1.1,1.4,1.3,1,.9,.85,.9,1.1,1.4,1.3,1],SHAPE_SUM=SHAPE.reduce((a,b)=>a+b,0);
+PRODUCTS.forEach(p=>{if(p.range)p.days=SHAPE.map(w=>[p.range[0]*w/SHAPE_SUM,p.range[1]*w/SHAPE_SUM])});
+const DAY0=new Date(2026,10,16);const dateOf=d=>new Date(DAY0.getFullYear(),DAY0.getMonth(),DAY0.getDate()+d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+const sold=(p,d,k)=>p.days.slice(0,d).reduce((a,x)=>a+(k==='mid'?(x[0]+x[1])/2:x[k]),0);
+// Stock left after day d: [if sales land at the top of the range, if they land at the bottom]. Day 0 is today's exact stock.
+const stockLeft=(p,d)=>[Math.max(0,p.stock-sold(p,d,1)),Math.max(0,p.stock-sold(p,d,0))];
+const daySell=(p,d)=>`${Math.floor(p.days[d-1][0])}–${Math.ceil(p.days[d-1][1])}`;
+function runsOut(p,k){for(let i=1;i<=14;i++)if(p.stock-sold(p,i,k)<=0)return i;return null}
+function riskOf(p){if(!p.range)return null;const top=runsOut(p,1),mid=runsOut(p,'mid');return top&&mid?'high':top?'medium':'low'}
+const rangeText=p=>!p.range?'':p.stale?`<span class="stale-range" title="Kumo did not answer the latest run. This range is from ${p.stale}.">${p.range[0]}–${p.range[1]}</span><span class="stale">stale</span>`:`${p.range[0]}–${p.range[1]}`;
+const staleNote=p=>p.stale?`<div class="sub" style="margin:4px 0 0">Kumo did not answer the latest run. This range is from ${p.stale}.</div>`:'';
+function stockAt(p,d){const [a,b]=stockLeft(p,d),lo=Math.floor(a),hi=Math.ceil(b);return lo===hi?`${lo}`:`${lo}–${hi}`}
+const outBy=(p,d)=>p.range&&d>0&&stockLeft(p,d)[0]<=0;
 const nodeRisk=id=>{const r=PRODUCTS.filter(p=>p.node===id).map(riskOf);return r.includes('high')?'high':r.includes('medium')?'medium':'low'};
 const nodeOf=id=>NODES.find(n=>n.id===id);const prodOf=id=>PRODUCTS.find(p=>p.id===id);
 let VIEW;
@@ -130,30 +142,36 @@ function drawMap(){const land=LAND.map(r=>{let d='',prev=null;for(let i=0;i<r.le
   if(done.length>1)h+=`<path d="${pl(done)}" fill="none" stroke="${c}" stroke-opacity="${o}" stroke-width="2.2" stroke-linecap="${cap}" stroke-dasharray="${DASH[s.mode]}" pointer-events="none"/>`;
   {const e=pts.at(-1);h+=`<circle cx="${e[0]}" cy="${e[1]}" r="3" fill="${c}" fill-opacity="${o}" pointer-events="none"/>`}
   if(t>0&&t<1)h+=`<circle cx="${cut[0]}" cy="${cut[1]}" r="4" fill="${c}" fill-opacity="${o}" stroke="#080812" stroke-width="1.5" pointer-events="none"/>`}
- for(const n of NODES){const [x,y]=VIEW.xy(n.at),r=nodeRisk(n.id),c=COLOR[r],o=ns&&!ns.has(n.id)?.3:1,sel=S.sel&&S.sel.t==='node'&&S.sel.id===n.id;h+=`<g data-node="${n.id}" style="cursor:pointer" opacity="${o}">`;if(r==='high')h+=`<circle class="pulse" cx="${x}" cy="${y}" r="8" fill="none" stroke="${c}" stroke-width="1.5"/>`;h+=`<circle cx="${x}" cy="${y}" r="14" fill="transparent"/>`;const st=`fill="#14142a" stroke="${c}" stroke-width="${sel?3:2}"`;
+ for(const n of NODES){const [x,y]=VIEW.xy(n.at),r=nodeRisk(n.id),c=COLOR[r],o=ns&&!ns.has(n.id)?.3:1,sel=S.sel&&S.sel.t==='node'&&S.sel.id===n.id;h+=`<g data-node="${n.id}" style="cursor:pointer" opacity="${o}">`;if(PRODUCTS.some(q=>q.node===n.id&&outBy(q,S.day)))h+=`<circle class="pulse" cx="${x}" cy="${y}" r="8" fill="none" stroke="${c}" stroke-width="1.5"/>`;h+=`<circle cx="${x}" cy="${y}" r="14" fill="transparent"/>`;const st=`fill="#14142a" stroke="${c}" stroke-width="${sel?3:2}"`;
   if(n.kind==='supplier')h+=`<circle cx="${x}" cy="${y}" r="7" ${st}/>`;else if(n.kind==='warehouse')h+=`<rect x="${x-7}" y="${y-7}" width="14" height="14" rx="3.5" ${st}/>`;else{const R=8.5,p=[];for(let i=0;i<6;i++)p.push((x+R*Math.cos(Math.PI/3*i)).toFixed(1)+','+(y+R*Math.sin(Math.PI/3*i)).toFixed(1));h+=`<polygon points="${p.join(' ')}" ${st}/>`}h+='</g>'}
  $('map').innerHTML=h;drawLabels()}
 function drawLabels(){const box=$('labels');box.innerHTML='';const placed=[],dock=document.querySelector('.dock').getBoundingClientRect(),st=$('stage').getBoundingClientRect();const limit={r:VIEW.w-344,b:dock.top-st.top};for(const n of NODES){const [x,y]=VIEW.xy(n.at);placed.push({id:n.id,l:x-12,t:y-12,r:x+12,b:y+12})}for(const s of SHIP){const [x,y]=VIEW.xy(s.path.at(-1));placed.push({id:'dot',l:x-6,t:y-6,r:x+6,b:y+6})}
  for(const n of [...NODES].sort((a,b)=>a.at[0]-b.at[0])){const [x,y]=VIEW.xy(n.at),el=document.createElement('div');el.className='label';el.textContent=n.name;box.append(el);const w=el.offsetWidth,h=el.offsetHeight,opts=[[x+13,y-h/2],[x-13-w,y-h/2],[x-w/2,y-13-h],[x-w/2,y+13],[x+13,y-h-9],[x+13,y+9],[x-13-w,y-h-9],[x-13-w,y+9],[x-w/2,y-34-h],[x-w/2,y+34]];let got=null;for(const [l,t] of opts){const b={l,t,r:l+w,b:t+h};if(l<4||t<4||b.r>limit.r||b.b>limit.b)continue;if(placed.some(p=>p.id!==n.id&&b.l<p.r+3&&b.r>p.l-3&&b.t<p.b+3&&b.b>p.t-3))continue;got=b;break}if(!got){el.remove();continue}el.style.left=got.l+'px';el.style.top=got.t+'px';placed.push(got)}}
 const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
 function chip(t){return `<span class="chip">${t}</span>`}
-const riskTag=r=>r?`<span class="risk ${r}">${r[0].toUpperCase()+r.slice(1)}</span>`:'';
-function soonCard(p){const out=runsOut(p,p.range[1]/14);return `<div class="card"><b>${p.name} could run out around day ${out}</b><p style="margin-bottom:0">At the top of the expected range.${chip('Our math')}</p></div>`}
+const riskTag=(r,p)=>r?`<span class="risk ${r}">${r[0].toUpperCase()+r.slice(1)}</span>${p&&p.stale?'<span class="stale">stale</span>':''}`:'';
+function soonCard(p){const out=runsOut(p,1);return `<div class="card"><b>${p.name} could run out around day ${out}</b><p style="margin-bottom:0">At the top of the expected range.${chip('Our math')}</p></div>`}
 function panel(){const p=$('panel');let h='',crumb='';
- if(!S.sel){const c={high:0,medium:0,low:0};PRODUCTS.forEach(x=>{const r=riskOf(x);if(r)c[r]++});const soon=PRODUCTS.filter(x=>x.range&&riskOf(x)!=='low').sort((a,b)=>runsOut(a,a.range[1]/14)-runsOut(b,b.range[1]/14));h=`<h2>Next 14 days</h2><div class="sub">Estimates, shown as ranges.</div><div class="stat"><span>High sell-out risk${chip('Our math')}</span><b>${plural(c.high,'product')}</b></div><div class="stat"><span>Medium sell-out risk${chip('Our math')}</span><b>${plural(c.medium,'product')}</b></div><div class="stat"><span>Out for delivery${chip('Shopify')}</span><b>${plural(SHIP.filter(s=>s.arrive>S.day).length,'delivery').replace('deliverys','deliveries')}</b></div><div class="sec">Could run out</div>${soon.map(soonCard).join('')}`}
+ if(!S.sel){const c={high:0,medium:0,low:0};PRODUCTS.forEach(x=>{const r=riskOf(x);if(r)c[r]++});const soon=PRODUCTS.filter(x=>x.range&&riskOf(x)!=='low').sort((a,b)=>runsOut(a,1)-runsOut(b,1));h=`<h2>Next 14 days</h2><div class="sub">Estimates, shown as ranges.</div>${PRODUCTS.some(x=>x.stale)?`<div class="card"><b>Forecasts are stale</b><p style="margin-bottom:0">Kumo did not answer the latest run. ${plural(PRODUCTS.filter(x=>x.stale).length,'product')} still ${PRODUCTS.filter(x=>x.stale).length===1?'shows its':'show their'} last range.${chip('Kumo')}</p></div>`:''}<div class="stat"><span>High sell-out risk${chip('Our math')}</span><b>${plural(c.high,'product')}</b></div><div class="stat"><span>Medium sell-out risk${chip('Our math')}</span><b>${plural(c.medium,'product')}</b></div><div class="stat"><span>Could be out by day ${S.day}${chip('Our math')}</span><b>${plural(PRODUCTS.filter(x=>outBy(x,S.day)).length,'product')}</b></div><div class="stat"><span>Out for delivery${chip('Shopify')}</span><b>${plural(SHIP.filter(s=>s.arrive>S.day).length,'delivery').replace('deliverys','deliveries')}</b></div><div class="sec">Could run out</div>${soon.map(soonCard).join('')}`}
  else{const back=`<button class="back" data-back="1">Back to overview</button>`;
   if(S.sel.t==='node'){const n=nodeOf(S.sel.id),pr=PRODUCTS.filter(x=>x.node===n.id),sh=SHIP.filter(s=>s.from===n.id);crumb=n.name;h=`${back}<h2>${n.name}</h2><div class="sub" style="text-transform:capitalize">${n.kind}</div><div class="sec">Products here</div>`+pr.map(x=>`<div class="stat"><span>${x.name}</span>${x.range?riskTag(riskOf(x)):'<span class="few">too few sales</span>'}</div>`).join('')+`<div class="sec">Deliveries out</div>`+sh.map(s=>`<div class="stat"><span>${s.id} to ${s.to}</span><span>day ${s.arrive}</span></div>`).join('')}
   else if(S.sel.t==='ship'){const s=SHIP.find(x=>x.id===S.sel.id),x=prodOf(s.product);crumb=s.id;h=`${back}<h2>${s.id}</h2><div class="sub">${nodeOf(s.from).name} to ${s.to}</div><div class="stat"><span>Carries${chip('Shopify')}</span><b>${s.qty} ${x.name}</b></div><div class="stat"><span>Expected${chip('Shopify')}</span><b>Day ${s.arrive}</b></div>`}
-  else{const x=prodOf(S.sel.id);crumb=x.name;h=`${back}<h2>${x.name}</h2><div class="sub">${nodeOf(x.node).name}</div><div class="stat"><span>Stock today${chip('Shopify')}</span><b>${x.stock}</b></div>`+(x.range?`<div class="stat"><span>Will sell, 14 days${chip('Kumo')}</span><b>${rangeText(x)}</b></div><div class="stat"><span>Stock on day ${S.day}${chip('Our math')}</span><b>${stockAt(x,S.day)}</b></div><div class="stat"><span>Sell-out risk${chip('Our math')}</span>${riskTag(riskOf(x))}</div>`+(riskOf(x)!=='low'?`<div class="sec">Could run out</div>${soonCard(x)}`:''):`<div class="stat"><span class="few">Too few sales to predict</span></div>`)}}
+  else{const x=prodOf(S.sel.id);crumb=x.name;h=`${back}<h2>${x.name}</h2><div class="sub">${nodeOf(x.node).name}</div><div class="stat"><span>Stock today${chip('Shopify')}</span><b>${x.stock}</b></div>`+(x.range?`<div class="stat"><span>Will sell, 14 days${chip('Kumo')}</span><b>${rangeText(x)}</b></div>${staleNote(x)}${S.day?`<div class="stat"><span>Will sell on day ${S.day}${chip('Kumo')}</span><b>${daySell(x,S.day)}</b></div>`:''}<div class="stat"><span>Stock ${S.day?'after day '+S.day:'today'}${chip(S.day?'Our math':'Shopify')}</span><b>${stockAt(x,S.day)}</b></div><div class="stat"><span>Sell-out risk${chip('Our math')}</span>${riskTag(riskOf(x))}</div>`+(riskOf(x)!=='low'?`<div class="sec">Could run out</div>${soonCard(x)}`:''):`<div class="stat"><span class="few">Too few sales to predict</span></div>`)}}
  p.innerHTML=h;$('crumb').innerHTML=crumb?`/ <b>${crumb}</b>`:''}
-function rows(){const out=PRODUCTS.map(p=>{const r=riskOf(p),way=SHIP.filter(s=>s.product===p.id&&s.arrive>S.day).reduce((a,s)=>a+s.qty,0)||'None',sel=S.sel&&S.sel.t==='product'&&S.sel.id===p.id?' sel':'';return `<tr class="row${sel}" data-prod="${p.id}" tabindex="0"><td>${p.name}</td><td>${p.stock}</td>`+(p.range?`<td>${rangeText(p)}</td><td>${stockAt(p,S.day)}</td><td>${riskTag(r)}</td>`:`<td class="few" colspan="3">too few sales to predict</td>`)+`<td>${way}</td></tr>`}).join('');$('rows').innerHTML=out;$('byDay').innerHTML=`Day ${S.day} stock${chip('Our math')}`}
-function timeline(){const pct=S.day/14*100;$('thumb').style.left=pct+'%';$('fill').style.width=pct+'%';$('dayNow').textContent=S.day;$('track').setAttribute('aria-valuenow',S.day);let h='';for(let i=0;i<=14;i++)h+=`<span class="tick${i===S.day?' on':''}" style="left:${i/14*100}%">${i}</span>`;$('ticks').innerHTML=h}
-function all(){fit();drawMap();panel();rows();timeline()}
-function setDay(d){d=Math.max(0,Math.min(14,d));if(d===S.day)return;S.day=d;drawMap();rows();timeline();panel()}
-function select(sel){S.sel=sel;drawMap();panel();rows()}
+function rows(){const out=PRODUCTS.map(p=>{const r=riskOf(p),way=SHIP.filter(s=>s.product===p.id&&s.arrive>S.day).reduce((a,s)=>a+s.qty,0)||'None',sel=S.sel&&S.sel.t==='product'&&S.sel.id===p.id?' sel':'';return `<tr class="row${sel}" data-prod="${p.id}" tabindex="0"><td>${p.name}</td><td>${p.stock}</td>`+(p.range?`<td>${rangeText(p)}</td><td>${stockAt(p,S.day)}</td><td>${riskTag(r)}</td>`:`<td class="few" colspan="3">too few sales to predict</td>`)+`<td>${way}</td></tr>`}).join('');$('rows').innerHTML=out;$('byDay').innerHTML=`Stock ${S.day?'after day '+S.day:'today'}${chip(S.day?'Our math':'Shopify')}`}
+function timeline(){const pct=S.day/14*100;$('thumb').style.left=pct+'%';$('fill').style.width=pct+'%';$('dayNow').textContent=S.day;$('dateNow').textContent='· '+(S.day?dateOf(S.day):'today, '+dateOf(0));$('track').setAttribute('aria-valuenow',S.day);$('track').setAttribute('aria-valuetext',`Day ${S.day}, ${dateOf(S.day)}`);let h='';for(let i=0;i<=14;i++)h+=`<span class="tick${i===S.day?' on':''}" style="left:${i/14*100}%">${i}</span>`;$('ticks').innerHTML=h}
+function curve(){const box=$('curve'),note=$('tlNote'),x=S.sel&&S.sel.t==='product'?prodOf(S.sel.id):null;
+ if(!x||!x.range){box.hidden=true;box.innerHTML='';note.textContent=x?`${x.name}: too few sales to predict`:'Pick a product to see its stock day by day';return}
+ const H=60,Y=v=>(3+(1-v/x.stock)*(H-18)).toFixed(1),X=d=>(d/14*100).toFixed(2),pts=[];for(let d=0;d<=14;d++)pts.push(`${X(d)},${Y(stockLeft(x,d)[1])}`);for(let d=14;d>=0;d--)pts.push(`${X(d)},${Y(stockLeft(x,d)[0])}`);
+ const c=x.stale?'#8d8da6':'#7c8cff',out=runsOut(x,1);
+ box.hidden=false;box.innerHTML=`<svg viewBox="0 0 100 ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="100" y1="${Y(0)}" y2="${Y(0)}" stroke="#2a2a3e" vector-effect="non-scaling-stroke"/><polygon points="${pts.join(' ')}" fill="${c}" fill-opacity=".28" stroke="${c}" stroke-width="1" ${x.stale?'stroke-dasharray="3 3"':''} vector-effect="non-scaling-stroke"/><line x1="${X(S.day)}" x2="${X(S.day)}" y1="0" y2="${H}" stroke="#e7e7f0" stroke-opacity=".7" vector-effect="non-scaling-stroke"/></svg>`+(out?`<span class="out${out>9?' end':''}" style="left:${X(out)}%">${out>9?'':'&nbsp;'}could run out day ${out}${out>9?'&nbsp;':''}</span>`:'');
+ note.innerHTML=`${x.name}: <b>${stockAt(x,S.day)}</b> in stock ${S.day?'after day '+S.day:'today'}${chip(S.day?'Our math':'Shopify')}${x.stale?'<span class="stale">stale</span>':''}`}
+function all(){curve();fit();drawMap();panel();rows();timeline()}
+function setDay(d){d=Math.max(0,Math.min(14,d));if(d===S.day)return;S.day=d;curve();drawMap();rows();timeline();panel()}
+function select(sel){S.sel=sel;all()}
 const trk=$('track');function fromEvent(e){const r=trk.getBoundingClientRect();setDay(Math.round((e.clientX-r.left)/r.width*14))}
 trk.addEventListener('pointerdown',e=>{trk.setPointerCapture(e.pointerId);fromEvent(e)});trk.addEventListener('pointermove',e=>{if(e.buttons)fromEvent(e)});
-trk.addEventListener('keydown',e=>{if(e.key==='ArrowRight')setDay(S.day+1);if(e.key==='ArrowLeft')setDay(S.day-1)});
+trk.addEventListener('keydown',e=>{if(e.key==='ArrowRight')setDay(S.day+1);if(e.key==='ArrowLeft')setDay(S.day-1);if(e.key==='Home')setDay(0);if(e.key==='End')setDay(14)});
 $('map').addEventListener('click',e=>{const n=e.target.closest('[data-node]'),s=e.target.closest('[data-ship]');if(n)select({t:'node',id:n.dataset.node});else if(s)select({t:'ship',id:s.dataset.ship});else select(null)});
 $('rows').addEventListener('click',e=>{const r=e.target.closest('[data-prod]');if(r)select({t:'product',id:r.dataset.prod})});
 $('rows').addEventListener('keydown',e=>{if(e.key==='Enter'){const r=e.target.closest('[data-prod]');if(r)select({t:'product',id:r.dataset.prod})}});

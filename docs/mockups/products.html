@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Terminal: Products mockup</title>
+<style>
+:root{--water:#080812;--land:#0f0f1a;--border:#2a2a3e;--line:rgba(255,255,255,.08);--text:#e7e7f0;--muted:#8d8da6;--low:#34d399;--medium:#fbbf24;--high:#f87171;--accent:#7c8cff}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--water);color:var(--text);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;overflow:hidden}
+button,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:0}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sidebar{width:240px;flex:none;background:var(--land);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 10px}
+.brand{font-weight:650;padding:4px 8px 16px}
+.nav{display:flex;align-items:center;gap:10px;padding:8px;border-radius:7px;color:var(--muted)}
+.nav.on{background:rgba(124,140,255,.14);color:var(--text)}
+.nav i{width:16px;height:16px;flex:none;border:1.5px solid currentColor;border-radius:4px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crumb{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px;border-bottom:1px solid var(--border);color:var(--muted)}
+.crumb b{color:var(--text);font-weight:550}.crumb button{color:var(--muted)}.crumb button:hover{color:var(--text)}
+.mock{margin-left:auto;font-size:11px;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+.content{flex:1;overflow:auto;padding:20px 24px 40px}
+h1{font-size:18px;margin:0 0 2px;font-weight:600}.sub{color:var(--muted);font-size:12px}
+h2{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:26px 0 8px}
+.chip{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:5px;white-space:nowrap;font-weight:400;letter-spacing:0;text-transform:none}
+.risk{font-size:12px;font-weight:600}.risk.low{color:var(--low)}.risk.medium{color:var(--medium)}.risk.high{color:var(--high)}
+.stale{font-size:10px;font-weight:600;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:0 5px;margin-left:6px}
+.few{color:var(--muted);font-style:italic}.old{color:var(--muted)}
+.filters{display:flex;gap:10px;margin:16px 0 10px;flex-wrap:wrap}
+.filters label{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:6px}
+select{background:var(--land);border:1px solid var(--border);border-radius:6px;padding:5px 8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:500;text-align:left;padding:7px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr.row{cursor:pointer}tr.row:hover td{background:rgba(255,255,255,.03)}
+.num{font-variant-numeric:tabular-nums}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:0;border:1px solid var(--line);border-radius:10px;margin-top:16px;background:var(--land)}
+.fact{padding:12px 14px;border-right:1px solid var(--line)}.fact:last-child{border-right:0}
+.fact .k{color:var(--muted);font-size:12px}.fact .v{font-size:20px;font-weight:600;margin-top:4px;font-variant-numeric:tabular-nums}.fact .n{color:var(--muted);font-size:12px;margin-top:2px}
+.notice{border:1px solid rgba(251,191,36,.35);border-radius:8px;padding:10px 12px;margin-top:14px;color:var(--text)}
+.chart{position:relative;background:var(--land);border:1px solid var(--line);border-radius:10px;padding:14px 16px 10px}
+.read{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted);min-height:18px;margin-bottom:8px}.read b{color:var(--text)}
+.plot{position:relative;height:120px}.plot svg{width:100%;height:100%;display:block}
+.cap{font-size:11px;color:var(--muted);margin:10px 0 4px}
+.days{display:grid;grid-template-columns:repeat(15,1fr);margin:6px -3.5714% 0}
+.days button{font-size:10px;color:var(--muted);padding:3px 0;text-align:center;border-radius:4px;line-height:1.3}
+.days button.on{color:var(--text);font-weight:600;background:rgba(124,140,255,.14)}
+.toggle{color:var(--accent);font-size:12px;margin-top:8px}
+.two{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:24px}
+ol{margin:0;padding:0;list-style:none;counter-reset:n}
+ol li{counter-increment:n;padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px}
+ol li:before{content:counter(n);color:var(--muted);width:14px;font-variant-numeric:tabular-nums}
+@media (max-width:900px){.two{grid-template-columns:1fr}.sidebar{width:64px}.sidebar span{display:none}}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="brand"><span>The Terminal</span></div>
+  <a class="nav" href="command-map.html"><i></i><span>Command</span></a>
+  <a class="nav on" href="products.html"><i></i><span>Products</span></a>
+  <a class="nav" href="customers.html"><i></i><span>Customers</span></a>
+  <span class="nav" title="No mockup yet"><i></i><span>Connections</span></span>
+</aside>
+<div class="main">
+  <div class="crumb" id="crumb"></div>
+  <main class="content" id="content"></main>
+</div>
+<script>
+const LOC={rotterdam:'Rotterdam warehouse',lyon:'Lyon fulfillment',berlin:'Berlin fulfillment'};
+// Made-up numbers. range = Kumo 14-day demand, back = Kumo units likely to come back, next = Kumo ranking.
+const PRODUCTS=[
+ {id:'tote',name:'Canvas Tote',type:'Bags',range:[110,190],back:[4,9],stock:{berlin:42,rotterdam:20},share:{berlin:.7,rotterdam:.3},next:['Leather Belt','Wool Scarf','Linen Shirt','Ceramic Mug','Limited Print']},
+ {id:'belt',name:'Leather Belt',type:'Accessories',range:[60,110],back:[2,6],stock:{rotterdam:95},share:{rotterdam:1},stale:'15 Nov',next:['Linen Shirt','Canvas Tote','Wool Scarf','Ceramic Mug','Limited Print']},
+ {id:'shirt',name:'Linen Shirt',type:'Clothing',range:[96,164],back:[14,27],stock:{rotterdam:108,berlin:40},share:{rotterdam:.75,berlin:.25},next:['Leather Belt','Wool Scarf','Canvas Tote','Ceramic Mug','Limited Print']},
+ {id:'mug',name:'Ceramic Mug',type:'Home',range:[44,72],back:[0,2],stock:{lyon:20},share:{lyon:1},next:['Canvas Tote','Limited Print','Wool Scarf','Leather Belt','Linen Shirt']},
+ {id:'scarf',name:'Wool Scarf',type:'Accessories',range:[12,30],back:[0,3],stock:{berlin:240},share:{berlin:1},next:['Linen Shirt','Leather Belt','Canvas Tote','Ceramic Mug','Limited Print']},
+ {id:'print',name:'Limited Print',type:'Home',range:null,stock:{lyon:9}}];
+const SHAPE=[.9,.85,.9,1.1,1.4,1.3,1,.9,.85,.9,1.1,1.4,1.3,1],SUM=SHAPE.reduce((a,b)=>a+b,0);
+const DAY0=new Date(2026,10,16),dateOf=d=>new Date(2026,10,16+d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}),wd=d=>new Date(2026,10,16+d).toLocaleDateString('en-GB',{weekday:'short'});
+const total=p=>Object.values(p.stock).reduce((a,b)=>a+b,0);
+// One location's share of the range, or the whole product when loc is null.
+const days=(p,loc)=>SHAPE.map(w=>[p.range[0]*w/SUM*(loc?p.share[loc]:1),p.range[1]*w/SUM*(loc?p.share[loc]:1)]);
+const stockOf=(p,loc)=>loc?p.stock[loc]:total(p);
+function left(p,d,loc){const ds=days(p,loc).slice(0,d),s=stockOf(p,loc);return [Math.max(0,s-ds.reduce((a,x)=>a+x[1],0)),Math.max(0,s-ds.reduce((a,x)=>a+x[0],0))]}
+function outDay(p,k,loc){for(let d=1;d<=14;d++)if(left(p,d,loc)[k]<=0)return d;return null}
+function risk(p,loc){if(!p.range)return null;const top=outDay(p,0,loc);if(!top)return 'low';const s=stockOf(p,loc),mid=days(p,loc).reduce((a,x)=>a+(x[0]+x[1])/2,0);return mid>=s?'high':'medium'}
+const chip=t=>`<span class="chip">${t}</span>`,cap=r=>r[0].toUpperCase()+r.slice(1);
+const staleTag=p=>p.stale?`<span class="stale" title="Kumo did not answer the latest run. These numbers are from ${p.stale}.">stale</span>`:'';
+const riskTag=(p,loc)=>`<span class="risk ${risk(p,loc)}">${cap(risk(p,loc))}</span>`;
+const rng=(r,p)=>`<span class="num${p&&p.stale?' old':''}">${Math.floor(r[0])}–${Math.ceil(r[1])}</span>`;
+const S={view:'list',id:null,day:0,table:false,f:{loc:'',risk:'',type:''}};const $=id=>document.getElementById(id);
+function list(){const f=S.f,rows=PRODUCTS.filter(p=>(!f.loc||f.loc in p.stock)&&(!f.type||p.type===f.type)&&(!f.risk||risk(p)===f.risk));
+ const opt=(v,l,c)=>`<option value="${v}"${v===c?' selected':''}>${l}</option>`;
+ $('crumb').innerHTML=`<b>Products</b><span class="mock">Mockup: made-up numbers</span>`;
+ $('content').innerHTML=`<h1>Products</h1><div class="sub">Next 14 days. Forecasts are estimates, shown as ranges.</div>
+ <div class="filters"><label>Location <select data-f="loc">${opt('','All locations',f.loc)}${Object.entries(LOC).map(([k,v])=>opt(k,v,f.loc)).join('')}</select></label>
+ <label>Sell-out risk <select data-f="risk">${opt('','Any',f.risk)}${['high','medium','low'].map(r=>opt(r,cap(r),f.risk)).join('')}</select></label>
+ <label>Product type <select data-f="type">${opt('','All types',f.type)}${[...new Set(PRODUCTS.map(p=>p.type))].map(t=>opt(t,t,f.type)).join('')}</select></label></div>
+ <table><thead><tr><th scope="col">Product</th><th scope="col">Type</th><th scope="col">Stock${chip('Shopify')}</th><th scope="col">Will sell, 14 days${chip('Kumo')}</th><th scope="col">Sell-out risk${chip('Our math')}</th><th scope="col">Likely to come back${chip('Kumo')}</th></tr></thead><tbody>${rows.map(p=>`<tr class="row" tabindex="0" data-id="${p.id}"><td>${p.name}</td><td class="old">${p.type}</td><td class="num">${total(p)}</td>`+(p.range?`<td>${rng(p.range,p)}${staleTag(p)}</td><td>${riskTag(p)}${staleTag(p)}</td><td>${rng(p.back,p)} units${staleTag(p)}</td>`:`<td class="few" colspan="3">too few sales to predict</td>`)+`</tr>`).join('')||`<tr><td colspan="6" class="few">No products match these filters.</td></tr>`}</tbody></table>`}
+function chart(p){const ds=days(p),W=100,H=120,max=Math.max(...ds.map(d=>Math.ceil(d[1]))),Y=v=>(6+(1-v/max)*(H-12)).toFixed(1),c=p.stale?'#8d8da6':'#7c8cff';let h=`<line x1="0" x2="100" y1="${Y(0)}" y2="${Y(0)}" stroke="#2a2a3e" vector-effect="non-scaling-stroke"/>`;
+ ds.forEach((d,i)=>{const x=(i+1)/14*W,y1=Y(Math.ceil(d[1])),y0=Y(Math.floor(d[0]));h+=`<rect x="${(x-1.2).toFixed(2)}" width="2.4" y="${y1}" height="${Math.max(2,y0-y1).toFixed(1)}" rx=".5" fill="${c}" fill-opacity="${S.day===i+1?1:.45}"/>`});
+ return `<svg viewBox="0 -2 ${W} ${H+2}" preserveAspectRatio="none" style="overflow:visible" role="img" aria-label="Units likely to sell each day, as ranges">${h}</svg>`}
+function band(p){const W=100,H=120,s=total(p),Y=v=>(6+(1-v/s)*(H-12)).toFixed(1),pts=[],c=p.stale?'#8d8da6':'#34d399';for(let d=0;d<=14;d++)pts.push(`${d/14*W},${Y(left(p,d)[1])}`);for(let d=14;d>=0;d--)pts.push(`${d/14*W},${Y(left(p,d)[0])}`);
+ return `<svg viewBox="0 -2 ${W} ${H+2}" preserveAspectRatio="none" style="overflow:visible" role="img" aria-label="Stock left each day, as a range"><line x1="0" x2="100" y1="${Y(0)}" y2="${Y(0)}" stroke="#2a2a3e" vector-effect="non-scaling-stroke"/><polygon points="${pts.join(' ')}" fill="${c}" fill-opacity=".25" stroke="${c}" vector-effect="non-scaling-stroke"/><line x1="${S.day/14*W}" x2="${S.day/14*W}" y1="0" y2="${H}" stroke="#e7e7f0" stroke-opacity=".6" vector-effect="non-scaling-stroke"/></svg>`}
+function outText(p,loc){const a=outDay(p,0,loc),b=outDay(p,1,loc);return !a?'Not within 14 days':b?(a===b?`Around day ${a}`:`Between day ${a} and day ${b}`):`Day ${a} or later`}
+function page(){const p=PRODUCTS.find(x=>x.id===S.id),locs=Object.keys(p.stock);
+ $('crumb').innerHTML=`<button data-back="1">Products</button><span>/</span><b>${p.name}</b><span class="mock">Mockup: made-up numbers</span>`;
+ let h=`<h1>${p.name}</h1><div class="sub">${p.type} · ${locs.map(l=>LOC[l]).join(', ')}</div>`;
+ if(!p.range){h+=`<div class="facts"><div class="fact"><div class="k">Stock today${chip('Shopify')}</div><div class="v">${total(p)}</div></div><div class="fact"><div class="k">Next 14 days</div><div class="v few" style="font-size:15px">Too few sales to predict</div><div class="n">A forecast appears once this product has sold in at least 3 separate orders in 8 weeks.</div></div></div>`;$('content').innerHTML=h;return}
+ if(p.stale)h+=`<div class="notice" role="status"><b>These forecasts are stale.</b> Kumo did not answer the latest run. The numbers below are from ${p.stale}.</div>`;
+ const d=S.day,ds=days(p);
+ h+=`<div class="facts">
+ <div class="fact"><div class="k">Stock today${chip('Shopify')}</div><div class="v">${total(p)}</div></div>
+ <div class="fact"><div class="k">Will sell, 14 days${chip('Kumo')}${staleTag(p)}</div><div class="v">${rng(p.range,p)}</div></div>
+ <div class="fact"><div class="k">Sell-out risk${chip('Our math')}${staleTag(p)}</div><div class="v">${riskTag(p).replace('class="risk','style="font-size:20px" class="risk')}</div></div>
+ <div class="fact"><div class="k">Could run out${chip('Our math')}${staleTag(p)}</div><div class="v" style="font-size:15px;line-height:26px">${outText(p)}</div></div>
+ <div class="fact"><div class="k">Likely to come back${chip('Kumo')}${staleTag(p)}</div><div class="v">${rng(p.back,p)}</div><div class="n">units, of those sold in 14 days</div></div></div>`;
+ h+=`<h2>Day by day</h2><div class="chart"><div class="read"><span>${d?`<b>Day ${d}</b> · ${dateOf(d)}`:`<b>Today</b> · ${dateOf(0)}`}</span><span>${d?`Will sell <b>${Math.floor(ds[d-1][0])}–${Math.ceil(ds[d-1][1])}</b>${chip('Kumo')} · Stock after <b>${Math.floor(left(p,d)[0])}–${Math.ceil(left(p,d)[1])}</b>${chip('Our math')}`:`Stock <b>${total(p)}</b>${chip('Shopify')} · pick a day`}</span></div>`+
+ (S.table?`<table><thead><tr><th scope="col">Day</th><th scope="col">Date</th><th scope="col">Will sell${chip('Kumo')}</th><th scope="col">Stock after${chip('Our math')}</th></tr></thead><tbody>${ds.map((x,i)=>`<tr><td class="num">${i+1}</td><td>${dateOf(i+1)}</td><td class="num">${Math.floor(x[0])}–${Math.ceil(x[1])}</td><td class="num">${Math.floor(left(p,i+1)[0])}–${Math.ceil(left(p,i+1)[1])}</td></tr>`).join('')}</tbody></table>`:
+ `<div class="cap">Units likely to sell each day${chip('Kumo')}</div><div class="plot">${chart(p)}</div><div class="cap">Stock left${chip('Our math')}</div><div class="plot">${band(p)}</div><div class="days" role="group" aria-label="Pick a day">${Array.from({length:15},(_,i)=>`<button data-day="${i}" class="${i===d?'on':''}" aria-pressed="${i===d}" aria-label="Day ${i}, ${dateOf(i)}">${i}<br>${wd(i)}</button>`).join('')}</div>`)+
+ `<button class="toggle" data-table="1">${S.table?'Show as chart':'Show as table'}</button></div>`;
+ h+=`<div class="two"><div><h2>Per location</h2><table><thead><tr><th scope="col">Location</th><th scope="col">Stock${chip('Shopify')}</th><th scope="col">Will sell, 14 days${chip('Kumo')}</th><th scope="col">Could run out${chip('Our math')}</th></tr></thead><tbody>${locs.map(l=>`<tr><td>${LOC[l]}</td><td class="num">${p.stock[l]}</td><td>${rng([p.range[0]*p.share[l],p.range[1]*p.share[l]],p)}${staleTag(p)}</td><td>${outText(p,l)}</td></tr>`).join('')}</tbody></table></div>
+ <div><h2>What customers usually buy next${chip('Kumo')}</h2><ol>${p.next.map(n=>`<li>${n}</li>`).join('')}</ol><div class="sub" style="margin-top:8px">Most likely first. Kumo gives an order, not a number.</div></div></div>`;
+ $('content').innerHTML=h}
+function render(){S.view==='list'?list():page()}
+function open(id){S.view='page';S.id=id;S.day=0;S.table=false;render();$('content').scrollTop=0}
+document.addEventListener('click',e=>{const t=e.target,r=t.closest('[data-id]'),d=t.closest('[data-day]');if(r)open(r.dataset.id);else if(t.closest('[data-back]')){S.view='list';render()}else if(d){S.day=+d.dataset.day;render();document.querySelector(`[data-day="${S.day}"]`).focus()}else if(t.closest('[data-table]')){S.table=!S.table;render()}});
+document.addEventListener('keydown',e=>{const r=e.target.closest&&e.target.closest('[data-id]');if(r&&e.key==='Enter')open(r.dataset.id);if(e.target.closest&&e.target.closest('.days')){const n=e.key==='ArrowRight'?S.day+1:e.key==='ArrowLeft'?S.day-1:e.key==='Home'?0:e.key==='End'?14:null;if(n!==null&&n>=0&&n<=14){e.preventDefault();S.day=n;render();document.querySelector(`[data-day="${n}"]`).focus()}}});
+document.addEventListener('change',e=>{const f=e.target.dataset.f;if(f){S.f[f]=e.target.value;render();document.querySelector(`[data-f="${f}"]`).focus()}});
+if(location.hash)open(location.hash.slice(1));else render();
+</script>
+</body>
+</html>

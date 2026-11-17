@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Terminal: page visuals (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--water:#080812;--land:#0d0d18;--panel:#11111e;--edge:#22223a;--line:rgba(255,255,255,.07);--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;
+  --accent:#7c8cff;--low:#34d399;--medium:#fbbf24;--high:#f87171;--teal:#2dd4bf;--sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--water);color:var(--text);font:13px/1.45 var(--sans);display:flex;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* shell */
+.side{width:212px;flex:none;background:var(--land);border-right:1px solid var(--edge);padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.brand{font-weight:600;letter-spacing:.02em;padding:2px 10px 18px}
+.nav{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;color:var(--muted);text-align:left;width:100%}
+.nav:hover{color:var(--text)}.nav.on{background:rgba(124,140,255,.12);color:var(--text)}
+.nav .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+.nav.on .dot{background:var(--accent);opacity:1}
+.nav .lock{margin-left:auto;font-size:10px;color:var(--dim)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:46px;flex:none;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--edge);color:var(--muted)}
+.top b{color:var(--text);font-weight:500}
+.seg{margin-left:auto;display:flex;border:1px solid var(--edge);border-radius:7px;overflow:hidden}
+.seg button{padding:4px 10px;color:var(--muted);font-size:12px}.seg button.on{background:rgba(124,140,255,.16);color:var(--text)}
+.mock{font-size:11px;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+/* scrubber */
+.scrub{flex:none;display:flex;align-items:center;gap:16px;padding:10px 20px;border-bottom:1px solid var(--edge);background:rgba(13,13,24,.6)}
+.scrub .lbl{width:150px;flex:none}.scrub .lbl b{display:block;font-weight:500}
+.scrub .lbl span{color:var(--muted);font-size:11px}
+.track{position:relative;flex:1}
+.track input{width:100%;accent-color:var(--accent);margin:0}
+.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:2px}
+.scrub .note{font-size:11px;color:var(--muted);width:170px;flex:none;text-align:right}
+/* page */
+#page{flex:1;overflow:auto;padding:22px 24px 40px}
+h1{font-size:20px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.answer{font-size:15px;color:var(--muted);margin:0 0 18px}.answer b{color:var(--text);font-weight:500}
+.hi{color:var(--high)}.me{color:var(--medium)}.lo{color:var(--low)}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:26px 0 10px;display:flex;align-items:center;gap:8px}
+.chip{font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;text-transform:none;letter-spacing:0;font-family:var(--sans)}
+.stale{font-size:10px;color:var(--medium);border:1px solid rgba(251,191,36,.35);border-radius:4px;padding:0 5px;margin-left:6px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);gap:28px;align-items:start}
+.panel{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:var(--panel)}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}.kv:last-child{border:0}
+.muted{color:var(--muted)}.small{font-size:11px}
+svg text{font-family:var(--sans);fill:var(--muted);font-size:10px}
+svg .num{font-family:var(--mono)}
+/* products */
+.prow{display:grid;align-items:center;gap:24px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.prow:hover{background:rgba(255,255,255,.02)}
+.pname b{font-weight:500}.pname div{font-size:11px;color:var(--muted)}
+.axisrow{display:grid;gap:24px;font-size:10px;color:var(--dim);padding-bottom:4px;border-bottom:1px solid var(--edge)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:14px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
+/* lock */
+.lockwrap{position:relative}
+.locked{filter:grayscale(1);opacity:.22;pointer-events:none;user-select:none}
+.lockcard{position:absolute;left:50%;top:90px;transform:translateX(-50%);width:min(440px,90%);background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lockcard b{font-size:15px;font-weight:600}.lockcard p{color:var(--muted);margin:6px 0 14px}
+.btn{border:1px solid var(--edge);border-radius:7px;padding:6px 12px;color:var(--text)}.btn:hover{border-color:var(--accent)}
+.tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{border:1px solid var(--edge);border-radius:99px;padding:3px 11px;color:var(--muted);font-size:12px}
+.tabs button.on{border-color:var(--accent);color:var(--text);background:rgba(124,140,255,.1)}
+ol.next{margin:0;padding-left:18px}ol.next li{padding:4px 0}
+#tip{position:fixed;z-index:20;pointer-events:none;background:#16162a;border:1px solid var(--edge);border-radius:7px;padding:6px 9px;font-size:12px;display:none;max-width:280px}
+.node{cursor:pointer}
+</style>
+</head>
+<body>
+<aside class="side" id="side"></aside>
+<div class="main">
+  <div class="top"><span id="crumb"></span>
+    <div class="seg" role="group" aria-label="Preview"><button data-mode="shopify">Shopify only</button><button data-mode="all">All apps connected</button></div>
+    <span class="mock">Mockup: made-up numbers</span></div>
+  <div class="scrub" id="scrub">
+    <div class="lbl"><b id="dayname"></b><span id="dayhint"></span></div>
+    <div class="track"><input id="day" type="range" min="0" max="14" step="1" aria-label="Day"><div class="ticks" id="ticks"></div></div>
+    <div class="note" id="scrubnote"></div>
+  </div>
+  <div id="page"></div>
+</div>
+<div id="tip"></div>
+<script>
+/* ---------- made-up data (deterministic) ---------- */
+const S={page:'products',day:9,product:0,metric:'return',connected:new Set(['shopify'])};
+let seed=11;const rnd=()=>{seed=(seed*16807)%2147483647;return (seed-1)/2147483646};
+const $=id=>document.getElementById(id);
+const DAY0=Date.UTC(2026,10,17);
+const dname=n=>new Date(DAY0+n*864e5).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+const fl=Math.floor,ce=Math.ceil,eur=v=>'€'+Math.round(v).toLocaleString('en-GB');
+const COL={low:'var(--low)',medium:'var(--medium)',high:'var(--high)'};
+const WEEK=[1.05,.9,.85,.95,1.05,1.3,1.25];
+const APPS={shopify:'Shopify',ads:'Google, Meta or TikTok Ads',payments:'Stripe or PayPal',support:'Gorgias'};
+const LOCS=['Rotterdam warehouse','Berlin store','Lyon warehouse'];
+const PRODUCTS=[['Linen Shirt',148,9.3],['Canvas Tote',62,10.7],['Wool Scarf',138,3.1],['Leather Belt',157,1.8,'15 Nov'],['Denim Jacket',54,2.2],
+  ['Limited Print',9,null],['Silk Tie',40,3.4],['Cotton Tee',210,12.5],['Rain Shell',31,2.6],['Knit Beanie',88,4.0]].map(([name,stock,rate,stale],id)=>{
+  const days=rate?Array.from({length:14},(_,d)=>{const m=rate*WEEK[(d+2)%7];return{lo:m*.62,md:m,hi:m*1.45}}):null;
+  const hist=Array.from({length:28},(_,d)=>rate?Math.max(0,Math.round(rate*WEEK[(d+2)%7]*(.55+rnd()*.9))):(rnd()<.15?1:0));
+  const a=.3+rnd()*.3,b=(1-a)*(.3+rnd()*.4);return{id,name,stock,rate,stale,days,hist,share:[a,b,1-a-b]}});
+const cum=(p,n)=>{let lo=0,md=0,hi=0;for(let d=0;d<n;d++){lo+=p.days[d].lo;md+=p.days[d].md;hi+=p.days[d].hi}return{lo,md,hi}};
+const runout=p=>{const f=k=>{let s=0;for(let d=0;d<14;d++){s+=p.days[d][k];if(s>=p.stock)return d+1}return null};return{early:f('hi'),mid:f('md'),late:f('lo')}};
+const risk=(p,n)=>{if(!n)return'low';const c=cum(p,n);return c.md>=p.stock?'high':c.hi>=p.stock?'medium':'low'};
+const CITIES=[['London',62,'high',30,'medium',14,'low'],['Paris',55,'high',22,'low',11,'medium'],['Amsterdam',41,'high',19,'medium',9,'high'],['Berlin',36,'medium',24,'high',8,'medium'],
+  ['Brussels',18,'medium',7,'low',6,'low'],['Rotterdam',16,'low',12,'medium',5,'medium'],['Utrecht',14,'medium',6,'low',0,''],['Munich',21,'medium',9,'medium',5,'low'],
+  ['Hamburg',12,'low',8,'high',0,''],['Vienna',9,'low',5,'medium',0,''],['Milan',11,'medium',6,'low',5,'low'],['Lyon',8,'low',0,'',0,''],['Copenhagen',7,'high',5,'low',0,'']]
+  .map(([name,r,rb,d,db,c,cb])=>({name,return:[r,rb],discount:[d,db],checkouts:[c,cb]}));
+const METRICS={return:'First-time buyers likely to come back',discount:'Customers who only buy with a discount',checkouts:'Abandoned checkouts likely to come back'};
+const CAMPAIGNS=[['Spring linen','Meta',[420,610],[1500,2300]],['Brand search','Google',[180,240],[900,1250]],['Tote retargeting','Meta',[150,260],[310,620]],
+  ['Shopping, all products','Google',[600,880],[1500,2500]],['Creator videos','TikTok',[300,520],[400,1100]],['Scarf launch','Meta',[90,140],[150,330]]];
+const ADS=[['Linen flat-lay','Spring linen','high',null],['Tote unboxing','Tote retargeting','medium',null],['Creator haul #3','Creator videos',null,'high'],['Scarf close-up','Scarf launch',null,'medium'],['Search: linen shirt','Brand search','low',null]];
+const TARGET=3;
+const TAGS=['Where is my order','Sizing','Damaged item','Return request','Other'];
+const TICKETS=TAGS.map((t,i)=>Array.from({length:14},(_,d)=>{let m=[6,3,1.2,2.5,1.8][i]*WEEK[(d+2)%7];if(i===0&&d>=4&&d<=6)m*=2.1;return{lo:m*.6,md:m,hi:m*1.5}}));
+const MONEY=Array.from({length:14},(_,d)=>{const w=WEEK[(d+2)%7],i=3100*w,r=260*w*(d>=6&&d<=8?1.6:1),s=60+40*w;return{in:[i*.72,i,i*1.3],ref:[r*.6,r,r*1.5],dis:[s*.4,s,s*1.9]}});
+
+/* ---------- helpers ---------- */
+const tip=(t)=>`data-tip="${t.replace(/"/g,'&quot;')}"`;
+const W=()=>$('page').clientWidth-48;
+const COL1=()=>Math.floor((W()-28)*1.6/2.6);  // first column of .grid2
+function locked(app,html,what){
+  if(S.connected.has(app))return html;
+  return `<div class="lockwrap"><div class="locked" aria-hidden="true">${html}</div><div class="lockcard"><b>Connect ${APPS[app]}</b><p>${what}</p><button class="btn" data-go="connections">See what each app unlocks</button></div></div>`}
+const LIKE={high:'#a5afff',medium:'#6f7ad6',low:'#464b7d'};
+const likeWord=b=>`<span style="color:${LIKE[b]}">${b}</span>`;
+const bandWord=b=>`<span class="${b==='high'?'hi':b==='medium'?'me':'lo'}">${b}</span>`;
+
+/* ---------- Products: stock against the range, and when it could run out ---------- */
+function pageProducts(){
+  const n=S.day,w=W(),nameW=190,W1=Math.floor((w-nameW-48)*.52),W2=w-nameW-48-W1,x2=d=>8+(d/15)*(W2-16);
+  const list=[...PRODUCTS].sort((a,b)=>{const k=p=>p.days?(runout(p).early??50):99;return k(a)-k(b)||a.name.localeCompare(b.name)});
+  const c={high:0,medium:0,low:0};list.forEach(p=>{if(p.days&&!p.stale)c[risk(p,n)]++});
+  const cols=`grid-template-columns:${nameW}px ${W1}px ${W2}px`;
+  const ticks=[0,2,4,6,8,10,12,14].map(d=>`<span style="position:absolute;left:${x2(d)}px;transform:translateX(-50%)">${d}</span>`).join('')+`<span style="position:absolute;left:${x2(15)}px;transform:translateX(-50%)">14+</span>`;
+  const rows=list.map(p=>{
+    const nm=`<div class="pname"><b>${p.name}</b>${p.stale?`<span class="stale">stale · ${p.stale}</span>`:''}<div>${p.stock} in stock${p.days&&n?` · sells <span class="num">${fl(cum(p,n).lo)}–${ce(cum(p,n).hi)}</span>`:''}</div></div>`;
+    if(!p.days)return `<div class="prow" style="${cols}" data-product="${p.id}">${nm}<div class="muted small">Too few sales to predict</div><div></div></div>`;
+    const cc=cum(p,n),c14=cum(p,14),max=Math.max(p.stock,c14.hi)*1.08,x1=v=>v/max*W1,col=p.stale?'var(--dim)':COL[risk(p,n)],r=runout(p);
+    const units=`<svg width="${W1}" height="40" ${tip(n?`${p.name}: sells ${fl(cc.lo)}–${ce(cc.hi)} by ${dname(n)}, ${p.stock} in stock`:`${p.stock} in stock today`)}>
+      <rect x="0" y="18" width="${x1(p.stock)}" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
+      <line x1="${x1(p.stock)}" x2="${x1(p.stock)}" y1="9" y2="31" stroke="#e7e7f0" stroke-width="2"/>
+      ${n?`<rect x="${x1(cc.lo)}" y="11" width="${Math.max(2,x1(cc.hi)-x1(cc.lo))}" height="18" rx="4" fill="${col}" fill-opacity=".22" stroke="${col}" stroke-opacity=".8" ${p.stale?'stroke-dasharray="3 3"':''}/>
+      <line x1="${x1(cc.md)}" x2="${x1(cc.md)}" y1="11" y2="29" stroke="${col}" stroke-width="2"/>`:''}
+      </svg>`;
+    const e=r.early,l=r.late??15,rc=p.stale?'var(--dim)':(e!=null&&e<=n?COL[risk(p,n)]:'var(--accent)');
+    const run=`<svg width="${W2}" height="40" ${tip(e==null?`${p.name} should last past ${dname(14)}`:`${p.name} could run out between ${dname(e)} and ${r.late?dname(r.late):'after day 14'}`)}>
+      ${[0,7,14].map(d=>`<line x1="${x2(d)}" x2="${x2(d)}" y1="4" y2="36" stroke="rgba(255,255,255,.05)"/>`).join('')}
+      <line x1="${x2(n)}" x2="${x2(n)}" y1="0" y2="40" stroke="var(--accent)" stroke-opacity=".55"/>
+      ${e==null?`<line x1="${x2(14.6)}" x2="${x2(15)}" y1="20" y2="20" stroke="var(--dim)" stroke-width="6" stroke-linecap="round"/><text x="${x2(14.2)}" y="24" text-anchor="end">lasts past day 14</text>`:
+      `<line x1="${x2(e)}" x2="${x2(l)}" y1="20" y2="20" stroke="${rc}" stroke-width="8" stroke-linecap="round" stroke-opacity=".35"/>
+       ${r.mid?`<circle cx="${x2(r.mid)}" cy="20" r="5" fill="${rc}"/>`:''}
+       ${r.late==null?`<path d="M${x2(15)-6},14 L${x2(15)},20 L${x2(15)-6},26" stroke="${rc}" fill="none" stroke-width="1.5"/>`:''}`}</svg>`;
+    return `<div class="prow" style="${cols}" data-product="${p.id}">${nm}${units}${run}</div>`}).join('');
+  return `<h1>Products</h1>
+   <p class="answer">${n?`By <b>${dname(n)}</b>, sell-out risk is`:'Today, sell-out risk is'} <b class="hi">high for ${c.high}</b>, <b class="me">medium for ${c.medium}</b> and <b class="lo">low for ${c.low}</b> products.</p>
+   <div class="axisrow" style="${cols}"><span>Product</span><span>Stock <span style="color:#e7e7f0">|</span> against what it will sell by the chosen day <span class="chip">Kumo</span></span>
+     <span style="position:relative;height:14px">${ticks}<span style="position:absolute;right:0;top:-16px">Could run out on day… <span class="chip">Our math</span></span></span></div>
+   ${rows}
+   <div class="legend"><span><i style="background:rgba(255,255,255,.3)"></i>Stock now</span><span><i style="background:rgba(124,140,255,.35);border:1px solid var(--accent)"></i>Likely range (10th–90th), line = middle</span>
+     <span><i style="background:rgba(248,113,113,.35)"></i>Earliest to latest run-out day, dot = most likely</span><span>Click a product for its page</span></div>`}
+
+/* ---------- Product page: the past flowing into the forecast fan ---------- */
+function pageProduct(){
+  const p=PRODUCTS[S.product],n=S.day,w=W();
+  if(!p.days)return `<h1>${p.name}</h1><p class="answer">Too few sales to predict. ${p.stock} in stock.</p>`;
+  const L=46,R=16,cw=w-L-R,slot=cw/42,x=d=>L+(d+28)*slot,H1=190,top=14;
+  const maxY=Math.max(...p.hist,...p.days.map(d=>d.hi))*1.15,y=v=>top+(H1-top-22)*(1-v/maxY);
+  const bars=p.hist.map((v,i)=>`<rect x="${x(i-28)+slot*.18}" y="${y(v)}" width="${slot*.64}" height="${y(0)-y(v)}" rx="1.5" fill="rgba(231,231,240,.32)" ${tip(`${dname(i-28)}: ${v} sold`)}/>`).join('');
+  const fx=d=>x(d)+slot*.5;
+  const band=p.days.map((d,i)=>`${fx(i+1)},${y(d.hi)}`).join(' ')+' '+p.days.map((d,i)=>`${fx(i+1)},${y(d.lo)}`).reverse().join(' ');
+  const med=p.days.map((d,i)=>`${fx(i+1)},${y(d.md)}`).join(' ');
+  const yt=[0,ce(maxY/2),ce(maxY*.95)].map(v=>`<text x="${L-8}" y="${y(v)+3}" text-anchor="end" class="num">${v}</text><line x1="${L}" x2="${w-R}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,.05)"/>`).join('');
+  const sales=`<svg width="${w}" height="${H1}">${yt}${bars}
+    <polygon points="${fx(0)},${y(p.hist[27])} ${band.split(' ')[0]} ${band} ${fx(1)},${y(p.days[0].lo)}" fill="var(--accent)" fill-opacity=".0"/>
+    <polygon points="${band}" fill="var(--accent)" fill-opacity=".2"/><polyline points="${fx(0)},${y(p.hist[27])} ${med}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <line x1="${fx(0)}" x2="${fx(0)}" y1="${top-6}" y2="${H1-20}" stroke="rgba(255,255,255,.25)" stroke-dasharray="2 3"/><text x="${fx(0)+5}" y="${top+2}">today</text>
+    ${n?`<line x1="${fx(n)}" x2="${fx(n)}" y1="${top-6}" y2="${H1-20}" stroke="var(--accent)"/><circle cx="${fx(n)}" cy="${y(p.days[n-1].md)}" r="4" fill="var(--accent)"/>`:''}
+    <text x="${x(-28)}" y="${H1-4}">${dname(-28)}</text><text x="${fx(14)}" y="${H1-4}" text-anchor="end">${dname(14)}</text></svg>`;
+  const H2=130,t2=10,lowS=Math.min(0,p.stock-cum(p,14).hi),y2=v=>t2+(H2-t2-20)*(p.stock-v)/(p.stock-lowS);
+  const up=[],dn=[];for(let k=0;k<=14;k++){const c=cum(p,k);up.push(`${fx(k)},${y2(p.stock-c.lo)}`);dn.push(`${fx(k)},${y2(p.stock-c.hi)}`)}
+  const cn=cum(p,n),r=runout(p);
+  const stock=`<svg width="${w}" height="${H2}">
+    <rect x="${fx(0)}" y="${y2(0)}" width="${fx(14)-fx(0)}" height="${Math.max(0,y2(lowS)-y2(0))}" fill="var(--high)" fill-opacity=".08"/>
+    <line x1="${fx(0)}" x2="${w-R}" y1="${y2(0)}" y2="${y2(0)}" stroke="var(--high)" stroke-opacity=".6" stroke-dasharray="3 3"/><text x="${w-R}" y="${y2(0)-5}" text-anchor="end" fill="var(--high)">out of stock</text>
+    <polygon points="${up.join(' ')} ${dn.reverse().join(' ')}" fill="#e7e7f0" fill-opacity=".14" stroke="#e7e7f0" stroke-opacity=".5"/>
+    <text x="${L-8}" y="${y2(p.stock)+3}" text-anchor="end" class="num">${p.stock}</text><text x="${L-8}" y="${y2(0)+3}" text-anchor="end" class="num">0</text>
+    <text x="${x(-28)}" y="${H2/2}" >No stock history yet: it starts once daily snapshots are saved</text>
+    ${n?`<line x1="${fx(n)}" x2="${fx(n)}" y1="0" y2="${H2-20}" stroke="var(--accent)"/>`:''}</svg>`;
+  const locs=LOCS.map((l,i)=>{const s=Math.round(p.stock*p.share[i]),lo=cn.lo*p.share[i],hi=cn.hi*p.share[i],mx=Math.max(s,cum(p,14).hi*p.share[i])*1.1,lw=Math.min(300,w*.3),xx=v=>v/mx*lw,b=hi>=s?'high':'low';
+    return `<div class="kv"><span>${l}</span><svg width="${lw}" height="18"><rect x="0" y="8" width="${xx(s)}" height="3" fill="rgba(255,255,255,.22)"/><line x1="${xx(s)}" x2="${xx(s)}" y1="2" y2="16" stroke="#e7e7f0" stroke-width="2"/>${n?`<rect x="${xx(lo)}" y="3" width="${Math.max(2,xx(hi)-xx(lo))}" height="12" rx="3" fill="${COL[b]}" fill-opacity=".25" stroke="${COL[b]}"/>`:''}</svg><span class="num small">${s} · ${n?`${fl(lo)}–${ce(hi)}`:'–'}</span></div>`}).join('');
+  const next=PRODUCTS.filter(q=>q.id!==p.id&&q.days).slice(0,5).map(q=>`<li>${q.name}</li>`).join('');
+  return `<h1>${p.name}${p.stale?`<span class="stale">stale · ${p.stale}</span>`:''}</h1>
+   <p class="answer">${n?`By <b>${dname(n)}</b> it will likely sell <b class="num">${fl(cn.lo)}–${ce(cn.hi)}</b>. `:''}${r.early?`It could run out from <b>${dname(r.early)}</b>${r.late?`, by <b>${dname(r.late)}</b> at the latest`:''}.`:`It should last past <b>${dname(14)}</b>.`}</p>
+   <div class="sec">Sold per day, then the likely range per day <span class="chip">Shopify</span><span class="chip">Kumo</span></div>${sales}
+   <div class="sec">Stock left after each day <span class="chip">Our math</span></div>${stock}
+   <div class="grid2" style="margin-top:8px"><div><div class="sec">Per location, by the chosen day <span class="chip">Kumo</span></div><div class="panel">${locs}</div></div>
+   <div><div class="sec">Customers usually buy next <span class="chip">Kumo</span></div><div class="panel"><ol class="next">${next}</ol><div class="small muted" style="margin-top:8px">Most likely first. No scores shown.</div></div></div></div>`}
+
+/* ---------- Customers: groups by how likely, never people ---------- */
+function pageCustomers(){
+  const w=W(),m=S.metric,size=Math.min(w*.58,520),R=size/2-14,cx=size/2,cy=size/2;
+  const bands=['high','medium','low'],radius={high:R*.2,medium:R*.51,low:R*.84},shown=CITIES.filter(c=>c[m][0]>=5),hidden=CITIES.filter(c=>c[m][0]>0&&c[m][0]<5);
+  let bubbles='';bands.forEach((b,bi)=>{const g=shown.filter(c=>c[m][1]===b);g.forEach((c,i)=>{const a=((i+.5)/Math.max(1,g.length))*Math.PI*2-Math.PI/2,rr=radius[b],
+    px=cx+Math.cos(a)*rr,py=cy+Math.sin(a)*rr,s=4+Math.sqrt(c[m][0])*2.1;
+    bubbles+=`<g ${tip(`${c.name}: ${c[m][0]} customers · ${b}`)}><circle cx="${px}" cy="${py}" r="${s}" fill="${LIKE[b]}" fill-opacity=".3" stroke="${LIKE[b]}"/>${s>6?`<text x="${px}" y="${py+s+11}" text-anchor="middle" style="fill:#e7e7f0">${c.name}</text>`:''}</g>`})});
+  const rings=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="rgba(52,211,153,.03)" stroke="var(--line)"/><circle cx="${cx}" cy="${cy}" r="${R*.66}" fill="rgba(251,191,36,.03)" stroke="var(--line)"/><circle cx="${cx}" cy="${cy}" r="${R*.33}" fill="rgba(248,113,113,.0)" stroke="var(--line)"/>
+    <text x="${cx}" y="${cy-R+14}" text-anchor="middle">low</text><text x="${cx}" y="${cy-R*.66+14}" text-anchor="middle">medium</text><text x="${cx}" y="${cy-R*.33+14}" text-anchor="middle">high</text>`;
+  const side=bands.map(b=>{const g=shown.filter(c=>c[m][1]===b);return `<div class="kv"><span>${likeWord(b)}</span><span class="num">${g.length} cities · ${g.reduce((s,c)=>s+c[m][0],0)} customers</span></div>`}).join('');
+  const tabs=Object.entries(METRICS).map(([k,v])=>`<button class="${k===m?'on':''}" data-metric="${k}">${v}</button>`).join('');
+  return `<h1>Customers</h1><p class="answer">Groups per city, placed by how likely they are. <b>Closer to the centre = more likely.</b> This page never shows who a customer is.</p>
+   <div class="tabs" role="tablist">${tabs}</div>
+   <div class="grid2"><svg width="${size}" height="${size}" style="justify-self:center">${rings}${bubbles}</svg>
+   <div><div class="sec">${METRICS[m]} <span class="chip">Kumo</span></div><div class="panel">${side}</div>
+   <p class="small muted" style="margin-top:12px">Bubble size = customers in that city. Cities with fewer than 5 are left out${hidden.length?` (${hidden.length} cities, ${hidden.reduce((s,c)=>s+c[m][0],0)} customers)`:''}, so no one can be picked out.</p></div></div>`}
+
+/* ---------- Ads: each campaign as a box of possible spend and revenue ---------- */
+function pageAds(){
+  const w=COL1(),n=Math.min(Math.max(S.day,1),7),f=n/7,H=360,L=56,B=34,cw=w-L-110;
+  const mxS=Math.max(...CAMPAIGNS.map(c=>c[2][1]))*1.15,mxR=Math.max(...CAMPAIGNS.map(c=>c[3][1]))*1.15,x=v=>L+v/mxS*cw,y=v=>H-B-(H-B-10)*v/mxR;
+  const miss=c=>c[3][1]<TARGET*c[2][0]?'high':c[3][0]>=TARGET*c[2][1]?'low':'medium';
+  const boxes=CAMPAIGNS.map(c=>{const b=miss(c),s=[c[2][0]*f,c[2][1]*f],r=[c[3][0]*f,c[3][1]*f];
+    return `<g ${tip(`${c[0]} (${c[1]}), next ${n} days: spend ${eur(s[0])}–${eur(s[1])}, revenue ${eur(r[0])}–${eur(r[1])}. Missing the return target: ${b}`)}>
+     <rect x="${x(s[0])}" y="${y(r[1])}" width="${x(s[1])-x(s[0])}" height="${y(r[0])-y(r[1])}" rx="3" fill="${COL[b]}" fill-opacity=".18" stroke="${COL[b]}"/>
+     <circle cx="${x((s[0]+s[1])/2)}" cy="${y((r[0]+r[1])/2)}" r="3" fill="${COL[b]}"/><text x="${x(s[1])+6}" y="${y(r[1])+10}" style="fill:#e7e7f0">${c[0]}</text><text x="${x(s[1])+6}" y="${y(r[1])+22}">${c[1]}</text></g>`}).join('');
+  const lim=Math.min(mxS,mxR/TARGET);
+  const plane=`<svg width="${cw+L+20}" height="${H}">
+    <polygon points="${x(0)},${y(0)} ${x(mxS)},${y(0)} ${x(mxS)},${y(Math.min(mxR,TARGET*mxS))} ${x(lim)},${y(TARGET*lim)}" fill="var(--high)" fill-opacity=".04"/>
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(lim)}" y2="${y(TARGET*lim)}" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="${x(lim)-4}" y="${y(TARGET*lim)+14}" text-anchor="end">return target ${TARGET}×</text>
+    <line x1="${L}" x2="${L+cw}" y1="${y(0)}" y2="${y(0)}" stroke="var(--edge)"/><line x1="${L}" x2="${L}" y1="10" y2="${y(0)}" stroke="var(--edge)"/>
+    ${[.25,.5,.75,1].map(k=>`<text x="${x(mxS*k*.9)}" y="${H-B+16}" text-anchor="middle" class="num">${eur(mxS*k*.9*f)}</text><text x="${L-8}" y="${y(mxR*k*.9)+3}" text-anchor="end" class="num">${eur(mxR*k*.9*f)}</text>`).join('')}
+    <text x="${L+cw}" y="${H-4}" text-anchor="end">spend →</text><text x="12" y="16">revenue ↑</text>${boxes}</svg>`;
+  const ads=ADS.map(([a,c,fade,win])=>`<div class="kv"><span>${a}<div class="small muted">${c}</div></span><span>${fade?`about to fade: ${bandWord(fade)}`:''}${win?`likely to win: ${bandWord(win)}`:''}</span></div>`).join('');
+  const html=`<h1>Ads</h1><p class="answer">Next <b>${n} days</b>. Each box is the range a campaign could spend and bring in. <b>Below the line</b> it misses its return target.</p>
+    <div class="grid2"><div>${plane}</div><div><div class="sec">Ads <span class="chip">Kumo</span></div><div class="panel">${ads}</div>
+    <p class="small muted" style="margin-top:12px">Ads look 7 days ahead. The scrubber stops growing the boxes after day 7.</p></div></div>`;
+  return locked('ads',html,'See the likely spend and revenue of every campaign for the next 7 days, and which ads are about to fade.')}
+
+/* ---------- Support: tickets per topic per day ---------- */
+function pageSupport(){
+  const w=Math.min(W(),1100),n=S.day,L=150,cell=(w-L-10)/14,ch=34,top=96;
+  const mx=Math.max(...TICKETS.flat().map(d=>d.md));
+  const tot=Array.from({length:14},(_,d)=>({lo:TICKETS.reduce((s,t)=>s+t[d].lo,0)*1.05,md:TICKETS.reduce((s,t)=>s+t[d].md,0),hi:TICKETS.reduce((s,t)=>s+t[d].hi,0)*.95}));
+  const tm=Math.max(...tot.map(t=>t.hi)),ty=v=>top-14-(top-30)*v/tm;
+  const totals=tot.map((t,d)=>`<g ${tip(`${dname(d+1)}: ${fl(t.lo)}–${ce(t.hi)} tickets`)}><line x1="${L+cell*(d+.5)}" x2="${L+cell*(d+.5)}" y1="${ty(t.hi)}" y2="${ty(t.lo)}" stroke="var(--accent)" stroke-width="${cell*.3}" stroke-opacity=".3" stroke-linecap="round"/><circle cx="${L+cell*(d+.5)}" cy="${ty(t.md)}" r="3" fill="var(--accent)"/></g>`).join('');
+  const cells=TICKETS.map((row,i)=>`<text x="${L-10}" y="${top+i*ch+ch/2+4}" text-anchor="end" style="fill:#e7e7f0">${TAGS[i]}</text>`+row.map((d,j)=>`<rect x="${L+j*cell+2}" y="${top+i*ch+2}" width="${cell-4}" height="${ch-4}" rx="4" fill="var(--accent)" fill-opacity="${.06+.8*d.md/mx}" ${tip(`${TAGS[i]}, ${dname(j+1)}: ${fl(d.lo)}–${ce(d.hi)} tickets`)}/>`).join('')).join('');
+  const col=n?`<rect x="${L+(n-1)*cell}" y="${top-2}" width="${cell}" height="${TAGS.length*ch+4}" rx="5" fill="none" stroke="#e7e7f0" stroke-opacity=".7"/>`:'';
+  const days=Array.from({length:14},(_,d)=>d%2===0?`<text x="${L+cell*(d+.5)}" y="${top+TAGS.length*ch+16}" text-anchor="middle">${dname(d+1).split(' ').slice(0,2).join(' ')}</text>`:'').join('');
+  const svg=`<svg width="${w}" height="${top+TAGS.length*ch+26}"><text x="${L-10}" y="${ty(tm/2)}" text-anchor="end">all tickets</text>${totals}${cells}${col}${days}</svg>`;
+  const html=`<h1>Support</h1><p class="answer">Tickets expected per day and topic. <b>Where is my order</b> rises around <b>${dname(5)}</b>, after the Spring linen campaign starts.</p>
+    <div class="sec">Next 14 days <span class="chip">Kumo</span></div>${svg}
+    <div class="grid2" style="margin-top:6px"><div class="panel"><div class="kv"><span>Open tickets likely to end in a refund</span><span>${bandWord('high')} 2 · ${bandWord('medium')} 5</span></div><div class="kv"><span>Open tickets likely to get a low score</span><span>${bandWord('high')} 1 · ${bandWord('medium')} 3</span></div></div>
+    <p class="small muted">Darker = more tickets. Hover a cell for its range.</p></div>`;
+  return locked('support',html,'See tickets expected per day and topic for the next 14 days, and which open tickets are likely to end in a refund.')}
+
+/* ---------- Money: in above the line, out below ---------- */
+function pageMoney(){
+  const w=COL1(),n=S.day,L=60,R=16,cw=w-L-R,H=330,mid=200,x=d=>L+(d+.5)*cw/14;
+  const mxIn=Math.max(...MONEY.map(d=>d.in[2])),mxOut=Math.max(...MONEY.map(d=>d.ref[2]+d.dis[2])),up=v=>mid-(mid-20)*v/mxIn,dn=v=>mid+(H-mid-30)*v/mxOut;
+  const area=(f,g,k)=>MONEY.map((d,i)=>`${x(i)},${f(d,k)}`).join(' ')+' '+MONEY.map((d,i)=>`${x(i)},${g(d,k)}`).reverse().join(' ');
+  const inBand=area(d=>up(d.in[2]),d=>up(d.in[0])),refBand=area(d=>dn(d.ref[0]),d=>dn(d.ref[2])),disBand=area(d=>dn(d.ref[1]+d.dis[0]),d=>dn(d.ref[1]+d.dis[2]));
+  const line=(f)=>MONEY.map((d,i)=>`${x(i)},${f(d)}`).join(' ');
+  const hit=MONEY.map((d,i)=>`<rect x="${x(i)-cw/28}" y="0" width="${cw/14}" height="${H}" fill="transparent" ${tip(`${dname(i+1)}: in ${eur(d.in[0])}–${eur(d.in[2])} · refunds ${eur(d.ref[0])}–${eur(d.ref[2])} · disputes ${eur(d.dis[0])}–${eur(d.dis[2])}`)}/>`).join('');
+  const d=n?MONEY[n-1]:null;
+  const svg=`<svg width="${w}" height="${H}">
+    <polygon points="${inBand}" fill="var(--teal)" fill-opacity=".18"/><polyline points="${line(d=>up(d.in[1]))}" fill="none" stroke="var(--teal)" stroke-width="2"/>
+    <polygon points="${refBand}" fill="var(--medium)" fill-opacity=".2"/><polyline points="${line(d=>dn(d.ref[1]))}" fill="none" stroke="var(--medium)" stroke-width="1.5"/>
+    <polygon points="${disBand}" fill="var(--high)" fill-opacity=".2"/><polyline points="${line(d=>dn(d.ref[1]+d.dis[1]))}" fill="none" stroke="var(--high)" stroke-width="1.5"/>
+    <line x1="${L}" x2="${w-R}" y1="${mid}" y2="${mid}" stroke="#e7e7f0" stroke-opacity=".35"/>
+    <text x="${L-8}" y="${up(mxIn*.9)+3}" text-anchor="end" class="num">${eur(mxIn*.9)}</text><text x="${L-8}" y="${mid+3}" text-anchor="end" class="num">€0</text><text x="${L-8}" y="${dn(mxOut*.9)+3}" text-anchor="end" class="num">${eur(mxOut*.9)}</text>
+    <text x="${L+4}" y="16" fill="var(--teal)" style="fill:var(--teal)">money in ↑</text><text x="${L+4}" y="${H-8}" style="fill:var(--medium)">refunds</text><text x="${L+60}" y="${H-8}" style="fill:var(--high)">disputes ↓</text>
+    ${n?`<line x1="${x(n-1)}" x2="${x(n-1)}" y1="10" y2="${H-24}" stroke="var(--accent)"/>`:''}${hit}</svg>`;
+  const read=d?`<div class="panel"><div class="kv"><span>Money in</span><span class="num">${eur(d.in[0])}–${eur(d.in[2])}</span></div><div class="kv"><span>Refunds</span><span class="num">${eur(d.ref[0])}–${eur(d.ref[2])}</span></div><div class="kv"><span>Disputes</span><span class="num">${eur(d.dis[0])}–${eur(d.dis[2])}</span></div></div>`:`<div class="panel muted">Move the day to read one day.</div>`;
+  const html=`<h1>Money</h1><p class="answer">Per day, the likely range of money coming in and going out. Refunds peak around <b>${dname(7)}</b>.</p>
+    <div class="grid2"><div>${svg}</div><div><div class="sec">${n?dname(n):'Pick a day'} <span class="chip">Kumo</span></div>${read}
+    <div class="sec">Open orders <span class="chip">Kumo</span></div><div class="panel"><div class="kv"><span>At risk of a chargeback</span><span>${bandWord('high')} 1 · ${bandWord('medium')} 4</span></div><div class="kv"><span>Disputes likely to be won</span><span>${bandWord('high')} 2 · ${bandWord('low')} 1</span></div></div>
+    <p class="small muted" style="margin-top:10px">Store-level forecast: runs on the GPU server.</p></div></div>`;
+  return locked('payments',html,'See the money coming in, refunds and disputes for the next 14 days, and which open orders risk a chargeback.')}
+
+/* ---------- Connections: what each app unlocks ---------- */
+const LEARN=[['Demand',['shopify'],['command','products']],['Stock risk',['shopify'],['command','products']],['Returns',['shopify'],['products','command']],['Customer groups',['shopify'],['customers']],
+  ['Unusual changes',['shopify'],['command']],['Campaigns',['ads'],['ads','products']],['Cash',['payments'],['money']],['Tickets',['support'],['support','products']]];
+const PAGES_=['command','products','customers','ads','support','money'],UNLOCK={shopify:11,ads:12,payments:10,support:8};
+function pageConnections(){
+  const w=Math.min(W(),1000),H=420,cols=[90,w/2,w-90],apps=Object.keys(APPS),on=a=>S.connected.has(a);
+  const ay=i=>50+i*(H-100)/3,ly=i=>56+i*(H-90)/7,py=i=>50+i*(H-100)/5;
+  const learnOn=l=>l[1].every(on),pageOn=p=>LEARN.some(l=>l[2].includes(p)&&learnOn(l));
+  const curve=(x1,y1,x2,y2,lit)=>`<path d="M${x1},${y1} C${(x1+x2)/2},${y1} ${(x1+x2)/2},${y2} ${x2},${y2}" fill="none" stroke="${lit?'var(--accent)':'rgba(255,255,255,.08)'}" stroke-width="${lit?1.6:1}" ${lit?'':'stroke-dasharray="3 4"'}/>`;
+  let edges='';LEARN.forEach((l,i)=>{l[1].forEach(a=>edges+=curve(cols[0]+70,ay(apps.indexOf(a)),cols[1]-62,ly(i),on(a)));l[2].forEach(p=>edges+=curve(cols[1]+62,ly(i),cols[2]-56,py(PAGES_.indexOf(p)),learnOn(l)))});
+  const pill=(cx,cy,wd,label,lit,extra='',sub='')=>`<g ${extra}><rect x="${cx-wd/2}" y="${cy-15}" width="${wd}" height="30" rx="15" fill="${lit?'rgba(124,140,255,.16)':'var(--panel)'}" stroke="${lit?'var(--accent)':'var(--edge)'}"/><text x="${cx}" y="${cy+4}" text-anchor="middle" style="fill:${lit?'#e7e7f0':'var(--muted)'};font-size:12px">${label}</text>${sub?`<text x="${cx}" y="${cy+28}" text-anchor="middle">${sub}</text>`:''}</g>`;
+  const nodes=apps.map((a,i)=>pill(cols[0],ay(i),150,a==='shopify'?'Shopify':a==='ads'?'Ads':a==='payments'?'Payments':'Gorgias',on(a),`class="node" data-app="${a}" ${tip(`${APPS[a]}: unlocks ${UNLOCK[a]} predictions. Click to preview.`)}`,on(a)?'connected':`unlocks ${UNLOCK[a]} predictions`)).join('')
+    +LEARN.map((l,i)=>pill(cols[1],ly(i),124,l[0],learnOn(l),l[0]==='Unusual changes'||l[0]==='Cash'?tip('Runs on the GPU server'):'')).join('')
+    +PAGES_.map((p,i)=>pill(cols[2],py(i),112,p[0].toUpperCase()+p.slice(1),pageOn(p),`class="node" data-go="${p}"`)).join('');
+  const n=[...S.connected].reduce((s,a)=>s+UNLOCK[a],0);
+  return `<h1>Connections</h1><p class="answer"><b class="num">${n} of 41</b> predictions are on. Click an app to preview what it unlocks.</p>
+    <svg width="${w}" height="${H}"><text x="${cols[0]}" y="14" text-anchor="middle">Your apps</text><text x="${cols[1]}" y="14" text-anchor="middle">What Kumo learns</text><text x="${cols[2]}" y="14" text-anchor="middle">Pages</text>${edges}${nodes}</svg>
+    <p class="small muted">Connecting apps comes with the login screen. In this mockup, clicking an app only previews it.</p>`}
+
+function pageCommand(){return `<h1>Command</h1><p class="answer">The 3D globe stays as built in the app: stock per location, heatmaps and the day 0–14 timeline.</p><div class="panel muted">This mockup covers the other pages. The shared day scrubber on top would also drive the globe's timeline.</div>`}
+
+/* ---------- shell ---------- */
+const PAGES={command:['Command',pageCommand,null],products:['Products',pageProducts,null],product:['Products',pageProduct,null],customers:['Customers',pageCustomers,null],
+  ads:['Ads',pageAds,'ads'],support:['Support',pageSupport,'support'],money:['Money',pageMoney,'payments'],connections:['Connections',pageConnections,null]};
+const TIMED={products:'',product:'',ads:'Ads look 7 days ahead',support:'',money:''};
+function render(){
+  $('side').innerHTML='<div class="brand">The Terminal</div>'+['command','products','customers','ads','support','money','connections'].map(k=>{const need=PAGES[k][2];
+    return `<button class="nav ${S.page===k||(S.page==='product'&&k==='products')?'on':''}" data-go="${k}"><span class="dot"></span>${PAGES[k][0]}${need&&!S.connected.has(need)?'<span class="lock">locked</span>':''}</button>`}).join('');
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',(b.dataset.mode==='all')===(S.connected.size===4)&&(b.dataset.mode==='all'||S.connected.size===1)));
+  const timed=S.page in TIMED;$('scrub').style.display=timed?'':'none';
+  $('day').value=S.day;$('dayname').textContent=S.day?`Day ${S.day} · ${dname(S.day)}`:'Today';$('dayhint').textContent=S.day?'Arrow keys move one day':'Stock as it is now';$('scrubnote').textContent=TIMED[S.page]||'';
+  $('crumb').innerHTML=S.page==='product'?`Products / <b>${PRODUCTS[S.product].name}</b>`:`<b>${PAGES[S.page][0]}</b>`;
+  $('page').innerHTML=PAGES[S.page][1]()}
+$('ticks').innerHTML=Array.from({length:15},(_,d)=>`<span>${d}</span>`).join('');
+$('day').addEventListener('input',e=>{S.day=+e.target.value;render()});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-go],[data-product],[data-mode],[data-metric],[data-app]');if(!t)return;
+  if(t.dataset.go){S.page=t.dataset.go}else if(t.dataset.product){S.page='product';S.product=+t.dataset.product}
+  else if(t.dataset.mode){S.connected=new Set(t.dataset.mode==='all'?Object.keys(APPS):['shopify'])}
+  else if(t.dataset.metric){S.metric=t.dataset.metric}else if(t.dataset.app&&t.dataset.app!=='shopify'){S.connected.has(t.dataset.app)?S.connected.delete(t.dataset.app):S.connected.add(t.dataset.app)}
+  $('tip').style.display='none';render()});
+document.addEventListener('mousemove',e=>{const t=e.target.closest&&e.target.closest('[data-tip]'),tp=$('tip');if(!t){tp.style.display='none';return}
+  tp.textContent=t.dataset.tip;tp.style.display='block';tp.style.left=Math.min(e.clientX+14,innerWidth-300)+'px';tp.style.top=(e.clientY+14)+'px'});
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(render,120)});
+render();
+</script>
+</body>
+</html>

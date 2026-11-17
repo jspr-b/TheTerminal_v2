@@ -15,6 +15,7 @@ node_modules/
 
 # Kumo experiments: downloaded data and API responses
 experiments/kumo_test/cache/
+experiments/kumo_test/cache_tabular/
 experiments/kumo_test/data/
 
 # Local tools
