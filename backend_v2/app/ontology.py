@@ -1,15 +1,20 @@
 """All data access. Every method that touches merchant data takes merchant_id and filters on it."""
 import hashlib
 import json
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from psycopg import sql
 from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool
 
+from .sellout import sellout
+
 UPSERT_TABLES = frozenset({"locations", "products", "product_variants", "inventory_levels", "customers", "orders", "order_lines"})
 ID_MAP_TABLES = frozenset({"locations", "products", "product_variants", "customers", "orders"})
 _KEY = ("merchant_id", "source", "external_id")
+DEMAND_QUERY = "demand_14d"
+MIN_SHARED_ORDERS = 2  # "bought in the same order" needs at least this many shared orders
 
 
 class OntologyService:
@@ -37,7 +42,7 @@ class OntologyService:
         return await self._all("select id, external_id, name, city, province, country, is_active from locations where merchant_id = %s order by name", (merchant_id,))
 
     async def command_view(self, merchant_id: UUID) -> dict:
-        """Everything the Command map needs. Stock is exact Shopify data."""
+        """Everything the Command map needs. Stock is exact Shopify data; forecasts are Kumo ranges."""
         locations = await self._all(
             """select l.id, l.name, l.city, l.province, l.country, l.lat, l.lng, l.kind,
                       coalesce(sum(i.available), 0)::int as units, count(distinct v.product_id)::int as products
@@ -51,13 +56,198 @@ class OntologyService:
                left join product_variants v on v.merchant_id = p.merchant_id and v.product_id = p.id
                left join inventory_levels i on i.merchant_id = v.merchant_id and i.variant_id = v.id
                where p.merchant_id = %s group by p.id, p.title, i.location_id order by p.title""", (merchant_id,))
+        forecasts, stale = await self.latest_demand_forecasts(merchant_id)
         products: dict[UUID, dict] = {}
         for r in rows:
-            item = products.setdefault(r["id"], {"id": r["id"], "title": r["title"], "units": 0, "by_location": [], "forecast_state": "too_few_sales"})
+            item = products.setdefault(r["id"], {"id": r["id"], "title": r["title"], "units": 0, "by_location": [], "forecast_state": "too_few_sales", "forecast": None})
             if r["location_id"] is not None:
                 item["units"] += r["units"]
                 item["by_location"].append({"location_id": r["location_id"], "units": r["units"]})
+        for pid, item in products.items():
+            if pid in forecasts:
+                item["forecast"] = forecasts[pid]
+                item["forecast_state"] = "stale" if stale else "forecast"
         return {"locations": locations, "products": list(products.values())}
+
+    async def latest_demand_forecasts(self, merchant_id: UUID) -> tuple[dict[UUID, dict], bool]:
+        """Ranges from the latest finished demand run. Stale when a later run failed."""
+        current = await self._one(
+            """select id, created_at from kumo_runs where merchant_id = %s and query_name = %s and status in ('done', 'skipped')
+               order by created_at desc limit 1""", (merchant_id, DEMAND_QUERY))
+        if current is None:
+            return {}, False
+        failed_after = await self._one(
+            "select 1 as x from kumo_runs where merchant_id = %s and query_name = %s and status = 'failed' and created_at > %s limit 1",
+            (merchant_id, DEMAND_QUERY, current["created_at"]))
+        rows = await self._all(
+            "select entity_id, lower, value, upper, generated_at from predictions where merchant_id = %s and run_id = %s and target = %s",
+            (merchant_id, current["id"], DEMAND_QUERY))
+        ranges = {r["entity_id"]: {"lower": float(r["lower"]), "value": float(r["value"]), "upper": float(r["upper"]), "generated_at": r["generated_at"]} for r in rows}
+        return ranges, failed_after is not None
+
+    async def sales_history(self, merchant_id: UUID, start: datetime, end: datetime) -> list[dict]:
+        """Order lines for forecasting. Only these columns leave the database: no customer or address fields."""
+        return await self._all(
+            """select l.product_id, l.order_id, l.ordered_at, l.quantity, l.price
+               from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+               where l.merchant_id = %s and l.product_id is not null and o.cancelled_at is null
+                 and l.ordered_at >= %s and l.ordered_at < %s""", (merchant_id, start, end))
+
+    async def product_families(self, merchant_id: UUID) -> dict[UUID, str | None]:
+        rows = await self._all("select id, product_type from products where merchant_id = %s", (merchant_id,))
+        return {r["id"]: r["product_type"] for r in rows}
+
+    async def start_kumo_run(self, merchant_id: UUID, query_name: str, trigger: str, model: str = "relational", endpoint: str = "hosted") -> UUID:
+        row = await self._one(
+            "insert into kumo_runs (merchant_id, model, query_name, status, trigger, started_at, endpoint) values (%s, %s, %s, 'running', %s, now(), %s) returning id",
+            (merchant_id, model, query_name, trigger, endpoint))
+        return row["id"]
+
+    async def first_order_day(self, merchant_id: UUID) -> date | None:
+        row = await self._one("select min(ordered_at at time zone 'utc')::date as d from orders where merchant_id = %s and cancelled_at is null", (merchant_id,))
+        return row["d"] if row else None
+
+    async def daily_store_totals(self, merchant_id: UUID, start: date, end: date) -> list[dict]:
+        """Store totals per day (UTC): revenue, orders, units, refunded amount. Numbers only, nothing per customer."""
+        return await self._all(
+            """with o as (select (ordered_at at time zone 'utc')::date as day, sum(coalesce(total, 0)) as revenue, count(*) as orders
+                          from orders where merchant_id = %(m)s and cancelled_at is null
+                            and (ordered_at at time zone 'utc')::date between %(s)s and %(e)s group by 1),
+                    u as (select (l.ordered_at at time zone 'utc')::date as day, sum(l.quantity) as units
+                          from order_lines l join orders x on x.merchant_id = l.merchant_id and x.id = l.order_id
+                          where l.merchant_id = %(m)s and x.cancelled_at is null
+                            and (l.ordered_at at time zone 'utc')::date between %(s)s and %(e)s group by 1),
+                    r as (select (refunded_at at time zone 'utc')::date as day, sum(coalesce(amount, 0)) as refunds
+                          from refunds where merchant_id = %(m)s and (refunded_at at time zone 'utc')::date between %(s)s and %(e)s group by 1)
+               select d.day, coalesce(o.revenue, 0) as revenue, coalesce(o.orders, 0) as orders, coalesce(u.units, 0) as units, coalesce(r.refunds, 0) as refunds
+               from (select o.day from o union select u.day from u union select r.day from r) d
+               left join o on o.day = d.day left join u on u.day = d.day left join r on r.day = d.day order by d.day""",
+            {"m": merchant_id, "s": start, "e": end})
+
+    async def save_store_prediction(self, merchant_id: UUID, run_id: UUID, model: str, target: str, horizon_days: int, payload: dict) -> None:
+        """A store-level result (one series for the whole store). The entity is the merchant itself."""
+        async with self.pool.connection() as conn:
+            await conn.execute(
+                """insert into predictions (merchant_id, run_id, model, model_version, entity_type, entity_id, target, horizon_days, payload, generated_at)
+                   values (%s, %s, %s, %s, 'store', %s, %s, %s, %s, now())""",
+                (merchant_id, run_id, model, f"kumo-{model}", merchant_id, target, horizon_days, Jsonb(payload)))
+
+    async def finish_kumo_run(self, merchant_id: UUID, run_id: UUID, status: str, rows: int = 0, latency_ms: int | None = None, error: str | None = None) -> None:
+        async with self.pool.connection() as conn:
+            await conn.execute(
+                "update kumo_runs set status = %s, rows = %s, latency_ms = %s, error = %s, finished_at = now() where merchant_id = %s and id = %s",
+                (status, rows, latency_ms, error, merchant_id, run_id))
+
+    async def save_predictions(self, merchant_id: UUID, run_id: UUID, target: str, horizon_days: int, ranges: dict[UUID, dict]) -> None:
+        async with self.pool.connection() as conn:
+            for entity_id, r in ranges.items():
+                await conn.execute(
+                    """insert into predictions (merchant_id, run_id, model, model_version, entity_type, entity_id, target, horizon_days, value, lower, upper, generated_at)
+                       values (%s, %s, 'relational', 'kumo-relational', 'product', %s, %s, %s, %s, %s, %s, now())""",
+                    (merchant_id, run_id, entity_id, target, horizon_days, r["value"], r["lower"], r["upper"]))
+
+    async def product_detail(self, merchant_id: UUID, product_id: UUID, days: int = 28) -> dict | None:
+        """One product: exact stock per location, the latest Kumo range, exact daily sales. None if not this merchant's."""
+        product = await self._one("select id, title, product_type from products where merchant_id = %s and id = %s", (merchant_id, product_id))
+        if product is None:
+            return None
+        stock = await self._all(
+            """select l.id as location_id, l.name, coalesce(sum(i.available), 0)::int as units
+               from inventory_levels i
+               join product_variants v on v.merchant_id = i.merchant_id and v.id = i.variant_id
+               join locations l on l.merchant_id = i.merchant_id and l.id = i.location_id
+               where i.merchant_id = %s and v.product_id = %s group by l.id, l.name order by l.name""", (merchant_id, product_id))
+        sales = await self._all(
+            """select d::date::text as date, coalesce(sum(x.quantity), 0)::int as units
+               from generate_series((now() at time zone 'utc')::date - (%s - 1), (now() at time zone 'utc')::date, interval '1 day') d
+               left join (select l.quantity, (l.ordered_at at time zone 'utc')::date as day
+                          from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+                          where l.merchant_id = %s and l.product_id = %s and o.cancelled_at is null) x on x.day = d::date
+               group by d order by d""", (days, merchant_id, product_id))
+        forecasts, stale = await self.latest_demand_forecasts(merchant_id)
+        forecast = forecasts.get(product_id)
+        units = sum(s["units"] for s in stock)
+        variants = await self._all(
+            """select v.id, v.title, v.sku, coalesce(sum(i.available), 0)::int as units
+               from product_variants v left join inventory_levels i on i.merchant_id = v.merchant_id and i.variant_id = v.id
+               where v.merchant_id = %s and v.product_id = %s group by v.id, v.title, v.sku order by v.title nulls last, v.sku""", (merchant_id, product_id))
+        together = await self._all(
+            """select p.id as product_id, p.title, count(distinct l2.order_id)::int as orders
+               from order_lines l1
+               join orders o on o.merchant_id = l1.merchant_id and o.id = l1.order_id and o.cancelled_at is null
+               join order_lines l2 on l2.merchant_id = l1.merchant_id and l2.order_id = l1.order_id and l2.product_id <> l1.product_id
+               join products p on p.merchant_id = l2.merchant_id and p.id = l2.product_id
+               where l1.merchant_id = %s and l1.product_id = %s
+               group by p.id, p.title having count(distinct l2.order_id) >= %s order by orders desc, p.title limit 5""",
+            (merchant_id, product_id, MIN_SHARED_ORDERS))
+        record = await self._all(
+            """select pr.generated_at, pr.lower::float, pr.value::float, pr.upper::float,
+                      (select coalesce(sum(l.quantity), 0) from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+                       where l.merchant_id = pr.merchant_id and l.product_id = pr.entity_id and o.cancelled_at is null
+                         and l.ordered_at >= pr.generated_at and l.ordered_at < pr.generated_at + make_interval(days => pr.horizon_days))::int as actual
+               from predictions pr join kumo_runs r on r.merchant_id = pr.merchant_id and r.id = pr.run_id and r.status = 'done'
+               where pr.merchant_id = %s and pr.entity_id = %s and pr.target = %s
+                 and pr.generated_at + make_interval(days => pr.horizon_days) <= now()
+               order by pr.generated_at desc limit 6""", (merchant_id, product_id, DEMAND_QUERY))
+        return {**product, "units": units, "by_location": stock, "sales": sales, "forecast": forecast,
+                "forecast_state": ("stale" if stale else "forecast") if forecast else "too_few_sales",
+                "sold_14d": sum(s["units"] for s in sales[-14:]), "sellout": sellout(units, forecast) if forecast else None,
+                "by_variant": variants, "bought_together": together, "track_record": record}
+
+    async def products_overview(self, merchant_id: UUID, days: int = 28) -> list[dict]:
+        """Every product: exact stock and daily sales for 28 days, the latest Kumo range, and sell-out (our math)."""
+        products = await self._all("select id, title, product_type from products where merchant_id = %s order by title", (merchant_id,))
+        stock = {r["product_id"]: r["units"] for r in await self._all(
+            """select v.product_id, coalesce(sum(i.available), 0)::int as units from product_variants v
+               left join inventory_levels i on i.merchant_id = v.merchant_id and i.variant_id = v.id
+               where v.merchant_id = %s group by v.product_id""", (merchant_id,))}
+        today = (await self._one("select (now() at time zone 'utc')::date as d", ()))["d"]
+        start = today - timedelta(days=days - 1)
+        sales: dict[UUID, list[int]] = {}
+        for r in await self._all(
+                """select l.product_id, (l.ordered_at at time zone 'utc')::date as day, sum(l.quantity)::int as units
+                   from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+                   where l.merchant_id = %s and l.product_id is not null and o.cancelled_at is null
+                     and (l.ordered_at at time zone 'utc')::date between %s and %s group by 1, 2""", (merchant_id, start, today)):
+            sales.setdefault(r["product_id"], [0] * days)[(r["day"] - start).days] = r["units"]
+        forecasts, stale = await self.latest_demand_forecasts(merchant_id)
+        out = []
+        for p in products:
+            units, daily, forecast = stock.get(p["id"], 0), sales.get(p["id"], [0] * days), forecasts.get(p["id"])
+            out.append({**p, "units": units, "sold_14d": sum(daily[-14:]), "sales_28d": daily, "forecast": forecast,
+                        "forecast_state": ("stale" if stale else "forecast") if forecast else "too_few_sales",
+                        "sellout": sellout(units, forecast) if forecast else None})
+        return out
+
+    async def orders_per_city(self, merchant_id: UUID, days: int, min_count: int) -> list[dict]:
+        """Exact orders per ship city over the last `days` days. Cities under min_count are left out (small-number rule)."""
+        return await self._all(
+            """select ship_city as city, max(ship_province) as province, ship_country as country, count(*)::int as value
+               from orders where merchant_id = %s and cancelled_at is null and ship_city is not null
+                 and ordered_at >= now() - make_interval(days => %s)
+               group by ship_city, ship_country having count(*) >= %s order by value desc, city""",
+            (merchant_id, days, min_count))
+
+    async def customers_per_city(self, merchant_id: UUID, days: int = 365) -> list[dict]:
+        """Customers with an order in the last `days` days, per the ship city of their latest order. Counts only."""
+        return await self._all(
+            """select city, country, count(*)::int as customers from (
+                 select distinct on (customer_id) customer_id, ship_city as city, ship_country as country
+                 from orders where merchant_id = %s and customer_id is not null and cancelled_at is null
+                   and ship_city is not null and ordered_at >= now() - make_interval(days => %s)
+                 order by customer_id, ordered_at desc) latest
+               group by city, country order by customers desc, city""", (merchant_id, days))
+
+    async def latest_kumo_runs(self, merchant_id: UUID) -> list[dict]:
+        """The newest run per model and question."""
+        return await self._all(
+            """select distinct on (model, query_name) model, query_name, status, finished_at
+               from kumo_runs where merchant_id = %s order by model, query_name, created_at desc""", (merchant_id,))
+
+    async def list_integrations(self, merchant_id: UUID) -> list[dict]:
+        return await self._all(
+            "select id, provider, status, last_sync_at, account_label from merchant_integrations where merchant_id = %s order by provider, connected_at",
+            (merchant_id,))
 
     async def list_import_jobs(self, merchant_id: UUID, limit: int = 50) -> list[dict]:
         return await self._all("select id, model, kind, status, records_done, started_at, finished_at, error from import_jobs where merchant_id = %s order by created_at desc limit %s", (merchant_id, limit))

@@ -35,6 +35,14 @@ async def main() -> None:
 
 asyncio.run(main())
 token = jwt.encode({"sub": str(USER), "aud": "authenticated", "exp": int(time.time()) + 30 * 86400}, SECRET, algorithm="HS256")
-env = ROOT.parent / "frontend/.env.local"
-keep = [l for l in (env.read_text().splitlines() if env.exists() else []) if not l.startswith(("NEXT_PUBLIC_DEV_", "NEXT_PUBLIC_API_URL="))]
+# .env.development.local is read by `next dev` only, never by `next build`, so the token cannot reach a shipped bundle.
+DEV_KEYS = ("NEXT_PUBLIC_DEV_", "NEXT_PUBLIC_API_URL=")
+env = ROOT.parent / "frontend/.env.development.local"
+keep = [l for l in (env.read_text().splitlines() if env.exists() else []) if not l.startswith(DEV_KEYS)]
 env.write_text("\n".join(keep + ["NEXT_PUBLIC_API_URL=http://127.0.0.1:8000", f"NEXT_PUBLIC_DEV_MERCHANT={MERCHANT}", f"NEXT_PUBLIC_DEV_TOKEN={token}"]) + "\n")
+old = ROOT.parent / "frontend/.env.local"  # where earlier versions wrote the token
+if old.exists():
+    lines = old.read_text().splitlines()
+    rest = [l for l in lines if not l.startswith(DEV_KEYS)]
+    if rest != lines:
+        old.write_text("\n".join(rest) + "\n" if rest else "")

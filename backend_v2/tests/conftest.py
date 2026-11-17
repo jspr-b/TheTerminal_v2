@@ -27,7 +27,7 @@ def ins(conn, table, **cols):
 
 def make_tenant(conn, tag):
     m, u = uuid.uuid4(), uuid.uuid4()
-    ids = {t: uuid.uuid4() for t in ("integ","loc","prod","var","cust","order","line","ful","run","pred")}
+    ids = {t: uuid.uuid4() for t in ("integ","loc","prod","var","cust","order","line","ful","run","pred","refund","camp","ad","pay","sub")}
     src = lambda name: {"source": "shopify", "external_id": f"{tag}-{name}"}
     now = "2026-01-01T00:00:00Z"
     ins(conn, "auth.users", id=u, email=f"{tag}-{u}@example.test")
@@ -51,6 +51,16 @@ def make_tenant(conn, tag):
     ins(conn, "kumo_runs", id=ids["run"], merchant_id=m, model="relational", query_name="demand", trigger="schedule")
     ins(conn, "predictions", id=ids["pred"], merchant_id=m, run_id=ids["run"], model="relational", entity_type="product", entity_id=ids["prod"], target="demand_14d", generated_at=now)
     ins(conn, "actions", merchant_id=m, prediction_id=ids["pred"], kind="reorder", title="Reorder")
+    ins(conn, "refunds", id=ids["refund"], merchant_id=m, order_id=ids["order"], refunded_at=now, amount=1, **src("refund"))
+    ins(conn, "refund_lines", merchant_id=m, refund_id=ids["refund"], order_line_id=ids["line"], product_id=ids["prod"], quantity=1, **src("rline"))
+    ins(conn, "checkouts", merchant_id=m, customer_id=ids["cust"], created_at_platform=now, **src("checkout"))
+    ins(conn, "ad_campaigns", id=ids["camp"], merchant_id=m, name="C", **src("camp"))
+    ins(conn, "ads", id=ids["ad"], merchant_id=m, campaign_id=ids["camp"], **src("ad"))
+    ins(conn, "ad_daily_metrics", merchant_id=m, campaign_id=ids["camp"], ad_id=ids["ad"], date="2026-01-01", spend=1, **src("metric"))
+    ins(conn, "payments", id=ids["pay"], merchant_id=m, order_id=ids["order"], amount=1, created_at_platform=now, **src("pay"))
+    ins(conn, "disputes", merchant_id=m, payment_id=ids["pay"], order_id=ids["order"], amount=1, opened_at=now, **src("dispute"))
+    ins(conn, "subscriptions", id=ids["sub"], merchant_id=m, customer_id=ids["cust"], created_at_platform=now, **src("sub"))
+    ins(conn, "support_tickets", merchant_id=m, customer_id=ids["cust"], order_id=ids["order"], created_at_platform=now, **src("ticket"))
     return Tenant(m, u, ids)
 
 

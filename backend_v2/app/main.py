@@ -11,11 +11,16 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
+from .catalog import APP_NAMES, FEATURES, LIVE_STATUSES, PAGES, PROVIDER_APP, connected_apps, page_sections, section_state
 from .config import Settings, get_settings
+from .forecast import Forecaster, run_demand_forecast
+from .gpu import GpuWorker, GpuWorkerClient, run_anomalies, run_store_totals
 from .importer import run_import
+from .kumo import KumoClient
+from .kumo_local import LocalKumo
 from .nango import NangoClient, RecordSource
 from .ontology import OntologyService
-from .schemas import CommandOut, Health, ImportJobOut, ImportStarted, LocationOut, ProductOut
+from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductsOverview
 
 logging.basicConfig(level=logging.INFO)
 bearer = HTTPBearer(auto_error=False)
@@ -42,6 +47,17 @@ def get_record_source(settings: Annotated[Settings, Depends(get_settings)]) -> R
     if not settings.nango_secret_key:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Nango is not configured")
     return NangoClient(settings.nango_secret_key, settings.nango_host)
+
+
+_local_kumo = LocalKumo()  # one per process: the weights load once, on first use
+
+
+def get_kumo(settings: Annotated[Settings, Depends(get_settings)]) -> Forecaster:
+    if settings.kumo_runtime == "local":
+        return _local_kumo
+    if not settings.nvidia_api_key:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Kumo is not configured")
+    return KumoClient(settings.nvidia_api_key)
 
 
 Service = Annotated[OntologyService, Depends(get_service)]
@@ -99,3 +115,96 @@ async def start_import(integration_id: UUID, merchant: Merchant, svc: Service, s
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Integration not found")
     tasks.add_task(run_import, svc, source, merchant, integration)
     return ImportStarted(integration_id=integration_id, status="importing")
+
+
+@app.post("/merchants/{merchant_id}/forecasts", response_model=ForecastStarted, status_code=status.HTTP_202_ACCEPTED)
+async def start_forecast(merchant: Merchant, svc: Service, kumo: Annotated[Forecaster, Depends(get_kumo)], tasks: BackgroundTasks) -> ForecastStarted:
+    tasks.add_task(run_demand_forecast, svc, kumo, merchant)
+    return ForecastStarted(status="forecasting")
+
+
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+async def merchant_apps(merchant: UUID, svc: OntologyService) -> list[str]:
+    return sorted(connected_apps(await svc.list_integrations(merchant)), key=list(APP_NAMES).index)
+
+
+@app.get("/merchants/{merchant_id}/pages/{page}", response_model=PageState)
+async def page_state(page: str, merchant: Merchant, svc: Service, settings: SettingsDep) -> dict:
+    """What each section of a page can show right now: ready, or why not."""
+    if page not in PAGES:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown page")
+    apps = await merchant_apps(merchant, svc)
+    return {"page": page, "connected": apps, "sections": page_sections(page, set(apps), gpu_ready=bool(settings.kumo_gpu_url))}
+
+
+MIN_COUNT = 5  # small-number rule: a city with fewer orders or customers than this is never shown
+HEATMAP_DAYS = 14
+HEATMAP_LAYERS = {"orders", "demand", "returns", "delays", "first_time"}
+
+
+@app.get("/merchants/{merchant_id}/heatmap/{layer}", response_model=Heatmap)
+async def heatmap(layer: str, merchant: Merchant, svc: Service, settings: SettingsDep) -> dict:
+    """City-level points for one heatmap layer. A layer that is not ready draws nothing."""
+    if layer not in HEATMAP_LAYERS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown layer")
+    feature = next(f for f in FEATURES if f.key == f"heatmap_{layer}")
+    section = section_state(feature, set(await merchant_apps(merchant, svc)), gpu_ready=bool(settings.kumo_gpu_url))
+    points = await svc.orders_per_city(merchant, HEATMAP_DAYS, MIN_COUNT) if section["state"] == "ready" and layer == "orders" else []
+    return {"layer": layer, "section": section, "min_count": MIN_COUNT, "points": points}
+
+
+@app.get("/merchants/{merchant_id}/products/overview", response_model=ProductsOverview)
+async def products_overview(merchant: Merchant, svc: Service) -> dict:
+    """The Products page. Registered before /products/{product_id} so "overview" is never read as an id."""
+    return {"products": await svc.products_overview(merchant)}
+
+
+@app.get("/merchants/{merchant_id}/products/{product_id}", response_model=ProductDetail)
+async def product_detail(product_id: UUID, merchant: Merchant, svc: Service) -> dict:
+    found = await svc.product_detail(merchant, product_id)
+    if found is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+    return found
+
+
+@app.get("/merchants/{merchant_id}/customers/regions", response_model=CustomerRegions)
+async def customer_regions(merchant: Merchant, svc: Service) -> dict:
+    """Customers as groups per city. Small cities are counted in `hidden`, never listed."""
+    rows = await svc.customers_per_city(merchant)
+    shown = [r for r in rows if r["customers"] >= MIN_COUNT]
+    return {"min_count": MIN_COUNT, "hidden": sum(r["customers"] for r in rows if r["customers"] < MIN_COUNT), "regions": shown}
+
+
+@app.get("/merchants/{merchant_id}/connections", response_model=Connections)
+async def connections(merchant: Merchant, svc: Service, settings: SettingsDep) -> dict:
+    integrations = await svc.list_integrations(merchant)
+    apps = [{"app": app_key, "name": name,
+             "connected": any(i["status"] in LIVE_STATUSES for i in integrations if PROVIDER_APP.get(i["provider"]) == app_key),
+             "integrations": [i for i in integrations if PROVIDER_APP.get(i["provider"]) == app_key]}
+            for app_key, name in APP_NAMES.items()]
+    kumo = {"hosted": bool(settings.nvidia_api_key), "local": settings.kumo_runtime == "local", "gpu": bool(settings.kumo_gpu_url),
+            "last_runs": await svc.latest_kumo_runs(merchant)}
+    return {"apps": apps, "kumo": kumo}
+
+
+def get_gpu(settings: SettingsDep) -> GpuWorker:
+    if not settings.kumo_gpu_url:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Kumo Forecast and Anomaly need the GPU worker (KUMO_GPU_URL is not set)")
+    return GpuWorkerClient(settings.kumo_gpu_url, anomaly_url=settings.kumo_gpu_anomaly_url)
+
+
+Gpu = Annotated[GpuWorker, Depends(get_gpu)]
+
+
+@app.post("/merchants/{merchant_id}/forecasts/store-totals", response_model=ForecastStarted, status_code=status.HTTP_202_ACCEPTED)
+async def start_store_totals(merchant: Merchant, svc: Service, gpu: Gpu, tasks: BackgroundTasks) -> ForecastStarted:
+    tasks.add_task(run_store_totals, svc, gpu, merchant)
+    return ForecastStarted(status="forecasting")
+
+
+@app.post("/merchants/{merchant_id}/anomalies", response_model=ForecastStarted, status_code=status.HTTP_202_ACCEPTED)
+async def start_anomalies(merchant: Merchant, svc: Service, gpu: Gpu, tasks: BackgroundTasks) -> ForecastStarted:
+    tasks.add_task(run_anomalies, svc, gpu, merchant)
+    return ForecastStarted(status="checking")

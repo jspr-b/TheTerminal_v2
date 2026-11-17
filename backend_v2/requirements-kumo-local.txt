@@ -1,0 +1,3 @@
+# Only for KUMO_RUNTIME=local. Pulls in torch. Weights: nvidia/Kumo-Relational v1.0.1 (OpenMDW-1.1), hash pinned in app/kumo_local.py.
+structured-data-models==0.2.1
+pandas>=2.2

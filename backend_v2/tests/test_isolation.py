@@ -7,10 +7,13 @@ from conftest import as_role, ins
 
 READABLE = ["merchants", "merchant_users", "merchant_integrations", "import_jobs", "locations", "products", "product_variants",
             "inventory_levels", "inventory_snapshots", "price_history", "cost_history", "customers", "orders", "order_lines",
-            "fulfillments", "fulfillment_events", "kumo_runs", "predictions", "actions"]
+            "fulfillments", "fulfillment_events", "kumo_runs", "predictions", "actions",
+            # Later apps (005): refunds and checkouts from Shopify, ads, payments, support.
+            "refunds", "refund_lines", "checkouts", "ad_campaigns", "ads", "ad_daily_metrics", "payments", "disputes", "subscriptions", "support_tickets"]
 ALL_TABLES = READABLE + ["raw_records"]
 SOURCED = ["locations", "products", "product_variants", "inventory_levels", "inventory_snapshots", "price_history", "cost_history",
-           "customers", "orders", "order_lines", "fulfillments", "fulfillment_events"]
+           "customers", "orders", "order_lines", "fulfillments", "fulfillment_events",
+           "refunds", "refund_lines", "checkouts", "ad_campaigns", "ads", "ad_daily_metrics", "payments", "disputes", "subscriptions", "support_tickets"]
 OWN_COLUMN = {"merchants": "id"}
 DENIED = errors.InsufficientPrivilege
 
