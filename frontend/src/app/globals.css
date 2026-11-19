@@ -38,3 +38,11 @@ body {
 .mapboxgl-ctrl-group .mapboxgl-ctrl-icon {
   filter: invert(1);
 }
+
+/* Bought together: time bar thumb and the side panel fading in on a new product */
+.time-range::-webkit-slider-runnable-track { height: 20px; background: transparent; }
+.time-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: 3px; border-radius: 50%; background: #fff; border: 3px solid #0a0a12; box-shadow: 0 0 0 1px #fff; }
+.time-range::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: #fff; border: 3px solid #0a0a12; }
+.panel-fade > * { animation: panel-fade 0.35s ease both; }
+@keyframes panel-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .panel-fade > * { animation: none; } }

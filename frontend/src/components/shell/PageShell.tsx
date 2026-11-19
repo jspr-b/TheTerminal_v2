@@ -9,8 +9,11 @@ export interface Crumb {
   href?: string;
 }
 
-/** Sidebar left, breadcrumb on top, content right. Used by every page except Command. */
-export default function PageShell({ crumbs, children }: { crumbs: Crumb[]; children: ReactNode }) {
+/**
+ * Sidebar left, breadcrumb on top, content right. Used by every page except Command.
+ * fill: the content gets the full remaining height and does not scroll itself (a command-center page).
+ */
+export default function PageShell({ crumbs, children, fill = false }: { crumbs: Crumb[]; children: ReactNode; fill?: boolean }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -32,7 +35,11 @@ export default function PageShell({ crumbs, children }: { crumbs: Crumb[]; child
             );
           })}
         </nav>
-        <div className="min-h-0 flex-1 overflow-auto px-6 pb-10 pt-5">{children}</div>
+        {fill ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-auto px-6 pb-10 pt-5">{children}</div>
+        )}
       </main>
     </div>
   );

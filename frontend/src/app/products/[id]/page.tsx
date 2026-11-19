@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { ReactNode } from "react";
-import PageShell, { PageTitle, SectionTitle, SubHeading } from "@/components/shell/PageShell";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import PageShell, { PageTitle, SectionTitle } from "@/components/shell/PageShell";
+import BasketGalaxy, { STAGE_BACKGROUND, neighbours } from "@/components/shared/BasketGalaxy";
 import { high, low, rangeText } from "@/components/shared/Forecast";
 import { LoadError, Skeleton, useLoad } from "@/components/shared/Load";
-import { ACCENT, STOCK, UntestedTag, dayFromToday, dayName, selloutVisibility, useWidth } from "@/components/shared/ProductVisuals";
+import { RISK_TEXT, STOCK, UntestedTag, dayFromToday, dayName, selloutVisibility, useWidth } from "@/components/shared/ProductVisuals";
+import Modal from "@/components/shared/Modal";
+import SampleCards, { SHOW_SAMPLES } from "@/components/product/SampleCards";
+import SalesSkyline from "@/components/product/SalesSkyline";
+import { RunoutChart, runoutShort } from "@/components/shared/Runout";
 import { SectionList } from "@/components/shared/Sections";
-import { DEV_MERCHANT, getPageState, getProduct, type ProductDetail } from "@/lib/api";
+import SourceChip from "@/components/shared/SourceChip";
+import { FIRST_CHECK, RESULT_WORDS, TrackGrid, TrackProductCard, TrackSummaryCard, resultOf } from "@/components/shared/TrackCards";
+import { DEV_MERCHANT, getPageState, getProduct, getProductPairs, getProductsOverview, type ProductDetail } from "@/lib/api";
 import { day } from "@/lib/format";
 
 const L = 46;
@@ -19,67 +26,6 @@ const MUTED = "#8d8da6";
 function timeScale(width: number, history: number) {
   const slot = (width - L - R) / (history + 14);
   return { slot, x: (d: number) => L + (d + history) * slot };
-}
-
-/** 28 exact history bars, then Kumo's one 14-day range spread evenly over its days. */
-function SalesChart({ p, width }: { p: ProductDetail; width: number }) {
-  const H = 190;
-  const top = 14;
-  const n = p.sales.length;
-  const { slot, x } = timeScale(width, n);
-  const f = p.forecast_state !== "too_few_sales" ? p.forecast : null;
-  const perDay = f ? { lower: f.lower / 14, value: f.value / 14, upper: f.upper / 14 } : null;
-  const maxY = Math.max(1, ...p.sales.map((s) => s.units), perDay?.upper ?? 0) * 1.15;
-  const y = (v: number) => top + (H - top - 22) * (1 - v / maxY);
-  const ticks = Array.from(new Set([0, Math.ceil(maxY / 2), Math.ceil(maxY * 0.95)]));
-  const stale = p.forecast_state === "stale";
-  return (
-    <svg width={width} height={H} className="block" role="img" aria-label="Sold per day for the last 28 days, then the likely range per day for the next 14">
-      {ticks.map((v) => (
-        <g key={v}>
-          <text x={L - 8} y={y(v) + 3} textAnchor="end" fontSize={10} fill={MUTED} className="font-mono">
-            {v}
-          </text>
-          <line x1={L} x2={width - R} y1={y(v)} y2={y(v)} stroke="rgba(255,255,255,.05)" />
-        </g>
-      ))}
-      {p.sales.map((s, i) => (
-        <rect key={s.date} x={x(i - n) + slot * 0.18} y={y(s.units)} width={slot * 0.64} height={y(0) - y(s.units)} rx={1.5} fill="rgba(231,231,240,.32)">
-          <title>{`${dayName(s.date)}: ${s.units} sold`}</title>
-        </rect>
-      ))}
-      {perDay && (
-        <g>
-          <rect
-            x={x(0)}
-            y={y(perDay.upper)}
-            width={x(14) - x(0)}
-            height={Math.max(1, y(perDay.lower) - y(perDay.upper))}
-            fill={ACCENT}
-            fillOpacity={stale ? 0.1 : 0.2}
-            stroke={stale ? ACCENT : "none"}
-            strokeOpacity={0.5}
-            strokeDasharray={stale ? "3 3" : undefined}
-          >
-            <title>{`Likely ${rangeText(f!)} over the next 14 days, about ${rangeText(perDay)} per day`}</title>
-          </rect>
-          <line x1={x(0)} x2={x(14)} y1={y(perDay.value)} y2={y(perDay.value)} stroke={ACCENT} strokeWidth={2} />
-        </g>
-      )}
-      <line x1={x(0)} x2={x(0)} y1={top - 6} y2={H - 20} stroke="rgba(255,255,255,.25)" strokeDasharray="2 3" />
-      <text x={x(0) + 5} y={top + 2} fontSize={10} fill={MUTED}>
-        today
-      </text>
-      {n > 0 && (
-        <text x={x(-n)} y={H - 4} fontSize={10} fill={MUTED}>
-          {dayName(p.sales[0].date)}
-        </text>
-      )}
-      <text x={x(14)} y={H - 4} textAnchor="end" fontSize={10} fill={MUTED}>
-        {dayFromToday(14)}
-      </text>
-    </svg>
-  );
 }
 
 /** Our math: stock now minus the range spread evenly over 14 days. */
@@ -143,45 +89,6 @@ function Empty({ children }: { children: ReactNode }) {
   return <p className="py-1.5 text-xs text-muted">{children}</p>;
 }
 
-/** Past ranges whose 14 days are over: the band, and a white dot for what really sold. */
-function TrackRecord({ rows }: { rows: ProductDetail["track_record"] }) {
-  const [ref, width] = useWidth<HTMLDivElement>();
-  const max = Math.max(1, ...rows.flatMap((r) => [r.upper, r.actual])) * 1.08;
-  const W = Math.max(60, width - 96 - 168 - 20);
-  const xx = (v: number) => 4 + (Math.max(0, v) / max) * (W - 8);
-  return (
-    <div ref={ref}>
-      {rows.length === 0 ? (
-        <Empty>Kumo has not been here long enough: the first check comes 14 days after the first forecast.</Empty>
-      ) : (
-        width > 0 &&
-        rows.map((r) => {
-          const lo = low(r.lower);
-          const hi = high(r.upper);
-          const where = r.actual < lo ? "below the range" : r.actual > hi ? "above the range" : "inside the range";
-          return (
-            <Row key={r.generated_at}>
-              <span className="w-24 flex-none text-xs">
-                Made {day(r.generated_at)}
-                <span className={`block text-[11px] ${where === "inside the range" ? "text-muted" : "text-[#e7e7f0]"}`}>{where}</span>
-              </span>
-              <svg width={W} height={18} aria-hidden="true">
-                <rect x={xx(r.lower)} y={3} width={Math.max(2, xx(r.upper) - xx(r.lower))} height={12} rx={3} fill={ACCENT} fillOpacity={0.22} stroke={ACCENT} strokeOpacity={0.8} />
-                <line x1={xx(r.value)} x2={xx(r.value)} y1={3} y2={15} stroke={ACCENT} strokeWidth={1.5} />
-                <circle cx={xx(r.actual)} cy={9} r={4} fill={STOCK} />
-              </svg>
-              <span className="w-[168px] flex-none whitespace-nowrap text-right text-[11px] text-muted">
-                range <span className="font-mono text-[#e7e7f0]">{rangeText(r)}</span> · sold{" "}
-                <span className="font-mono text-[#e7e7f0]">{r.actual.toLocaleString()}</span>
-              </span>
-            </Row>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
 function Answer({ p, sellout, untested }: { p: ProductDetail; sellout: boolean; untested: boolean }) {
   const f = p.forecast_state !== "too_few_sales" ? p.forecast : null;
   const s = p.sellout;
@@ -214,55 +121,361 @@ function Answer({ p, sellout, untested }: { p: ProductDetail; sellout: boolean; 
   );
 }
 
+/** The views the stage can show; the rail picks one. */
+type View = "skyline" | "pairs" | "track";
+type Open = null | "stock" | "runout";
+
+function BoughtList({ rows }: { rows: { id: string; title: string; orders: number }[] }) {
+  return (
+    <>
+      {rows.map((b) => (
+        <Row key={b.id}>
+          <Link href={`/products/${encodeURIComponent(b.id)}`} className="hover:text-accent">
+            {b.title}
+          </Link>
+          <span className="text-xs text-muted">
+            in <span className="font-mono text-[#e7e7f0]">{b.orders.toLocaleString()}</span> orders
+          </span>
+        </Row>
+      ))}
+    </>
+  );
+}
+
+/** One answer in the ribbon; clickable when it has a detail. */
+function Cell({ label, chips, value, sub, onOpen, valueClass = "" }: { label: string; chips: ReactNode; value: ReactNode; sub?: ReactNode; onOpen?: () => void; valueClass?: string }) {
+  const body = (
+    <>
+      <div className="flex items-center whitespace-nowrap text-[10px] uppercase tracking-[0.06em] text-muted [&_.source-chip]:normal-case [&_.source-chip]:tracking-normal">
+        {label}
+        {chips}
+        {onOpen && <span className="ml-auto pl-2 normal-case tracking-normal text-accent opacity-0 transition-opacity group-hover:opacity-100">Open →</span>}
+      </div>
+      <div className={`mt-0.5 truncate font-mono text-[19px] leading-tight ${valueClass}`}>
+        {value}
+        {sub && <small className="ml-1.5 font-sans text-xs text-muted">{sub}</small>}
+      </div>
+    </>
+  );
+  const cls = "group min-w-0 flex-1 border-r border-white/[0.07] px-3.5 py-2 text-left last:border-0";
+  return onOpen ? (
+    <button type="button" onClick={onOpen} className={`${cls} hover:bg-white/[0.025] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}>
+      {body}
+    </button>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
+/** A rail entry: small picture, name, one line. Picks what the stage shows. */
+function Instrument({ on, slim, title, chips, line, thumb, onClick }: { on: boolean; slim: boolean; title: string; chips: ReactNode; line: ReactNode; thumb: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={on}
+      className={`grid w-full items-center gap-3 border-b border-l-2 border-b-white/[0.07] px-4 py-3 text-left transition-colors ${
+        on ? "border-l-accent bg-accent/[0.07]" : "border-l-transparent hover:bg-white/[0.025]"
+      } ${slim ? "grid-cols-[104px]" : "grid-cols-[104px_1fr]"} focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
+    >
+      <span className="block h-[46px] w-[104px]">{thumb}</span>
+      {!slim && (
+        <span className="min-w-0">
+          <span className="flex flex-wrap items-center text-[10px] uppercase tracking-[0.06em] text-muted [&_.source-chip]:normal-case [&_.source-chip]:tracking-normal">
+            {title}
+            {chips}
+          </span>
+          <span className="mt-0.5 block text-[13px] leading-snug text-[#c9c9d8] [&_b]:font-medium [&_b]:text-[#e7e7f0]">{line}</span>
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** Rail picture: the last 18 days solid, the next 8 as Kumo's middle with the top of the range outlined. */
+function SkylineThumb({ p, outDay }: { p: ProductDetail; outDay: number | null }) {
+  const f = p.forecast_state !== "too_few_sales" ? p.forecast : null;
+  const past = p.sales.slice(-18).map((s) => s.units);
+  const ahead = f ? Array.from({ length: 8 }, () => ({ mid: f.value / 14, hi: f.upper / 14 })) : [];
+  const max = Math.max(1, ...past, ...ahead.map((a) => a.hi));
+  const y = (v: number) => (v / max) * 42;
+  return (
+    <svg width={104} height={46} aria-hidden="true">
+      {past.map((v, i) => (
+        <rect key={i} x={i * 4} y={44 - y(v)} width={3} height={y(v)} fill="#c9cbe0" opacity={0.75} />
+      ))}
+      {ahead.map((a, i) => (
+        <g key={i}>
+          <rect x={72 + i * 4} y={44 - y(a.mid)} width={3} height={y(a.mid)} fill={outDay !== null && i + 1 >= outDay ? "#f87171" : "#7c8cff"} opacity={0.7} />
+          <rect x={72 + i * 4} y={44 - y(a.hi)} width={3} height={y(a.hi)} fill="none" stroke="#9aa6ff" strokeWidth={0.5} />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+/** Rail picture: this product in the middle, its pairs around it, thicker line = more shared orders. */
+function PairsThumb({ rows }: { rows: { orders: number }[] }) {
+  const top = rows.slice(0, 6);
+  const max = Math.max(1, ...top.map((r) => r.orders));
+  const at = (i: number): [number, number] => {
+    const a = (i / Math.max(1, top.length)) * Math.PI * 2 - Math.PI / 2;
+    return [52 + Math.cos(a) * 40, 23 + Math.sin(a) * 18];
+  };
+  return (
+    <svg width={104} height={46} aria-hidden="true">
+      {top.map((r, i) => {
+        const [x, y] = at(i);
+        return <line key={i} x1={52} y1={23} x2={x} y2={y} stroke="#7c8cff" strokeWidth={0.5 + (2 * r.orders) / max} opacity={0.7} />;
+      })}
+      {top.map((r, i) => {
+        const [x, y] = at(i);
+        return <circle key={i} cx={x} cy={y} r={2 + (2 * r.orders) / max} fill="#8fa2ff" />;
+      })}
+      <circle cx={52} cy={23} r={6} fill="#fff" />
+    </svg>
+  );
+}
+
+/** Rail picture: the last checks as small bands with a white dot for what sold. */
+function TrackThumb({ rows }: { rows: ProductDetail["track_record"] }) {
+  const top = rows.slice(0, 4);
+  const lo = Math.min(...top.map((r) => Math.min(r.lower, r.actual)));
+  const hi = Math.max(...top.map((r) => Math.max(r.upper, r.actual)));
+  const x = (v: number) => 4 + ((v - lo) / Math.max(1, hi - lo)) * 96;
+  return (
+    <svg width={104} height={46} aria-hidden="true">
+      {top.map((r, i) => (
+        <g key={r.generated_at}>
+          <rect x={x(r.lower)} y={3 + i * 11} width={Math.max(2, x(r.upper) - x(r.lower))} height={7} rx={2} fill="rgba(124,140,255,.3)" />
+          <circle cx={x(r.actual)} cy={6.5 + i * 11} r={2.6} fill="#fff" />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 export default function ProductPage() {
   const params = useParams<{ id: string }>();
   const id = decodeURIComponent(params?.id ?? "");
   const product = useLoad(() => getProduct(DEV_MERCHANT, id), `product:${DEV_MERCHANT}:${id}`);
   const page = useLoad(() => getPageState(DEV_MERCHANT, "product"), `page:product:${DEV_MERCHANT}`);
-  const [ref, width] = useWidth<HTMLDivElement>();
+  const pairs = useLoad(() => getProductPairs(DEV_MERCHANT), `products-pairs:${DEV_MERCHANT}`);
+  const overview = useLoad(() => getProductsOverview(DEV_MERCHANT), `products-overview:${DEV_MERCHANT}`);
+  const [view, setView] = useState<View>("skyline");
+  const [open, setOpen] = useState<Open>(null);
+  const close = useCallback(() => setOpen(null), []);
+  // A new product (via a link) starts on the skyline with every pop-up closed.
+  useEffect(() => {
+    setOpen(null);
+    setView("skyline");
+  }, [id]);
   const p = product.data;
   const vis = selloutVisibility([p?.sellout ?? null]);
-  const showStock = vis.shown && p !== null && p.forecast !== null && p.forecast_state !== "too_few_sales";
+  const f = p && p.forecast_state !== "too_few_sales" ? p.forecast : null;
+  const showStock = vis.shown && f !== null;
+  const outDay = vis.shown && p?.sellout ? p.sellout.likely_day : null;
+
+  // Bought together: the galaxy when this product is in it, otherwise the product's own list.
+  const inGalaxy = pairs.data !== null && pairs.data.nodes.some((n) => n.id === id) && pairs.data.links.some((l) => l.source === id || l.target === id);
+  const together = p
+    ? inGalaxy && pairs.data
+      ? neighbours(pairs.data, id)
+      : p.bought_together.map((b) => ({ id: b.product_id, title: b.title, orders: b.orders }))
+    : [];
+  const latest = p?.track_record[0];
+  const held = p ? p.track_record.filter((r) => resultOf(r) === "inside").length : 0;
+  const slim = view !== "skyline";
 
   return (
-    <PageShell crumbs={[{ label: "Products", href: "/products" }, { label: p?.title ?? "Product" }]}>
-      {product.error && <LoadError message={product.error} retry={product.retry} />}
-      {!product.error && !p && <Skeleton className="h-6 w-64" />}
+    <PageShell crumbs={[{ label: "Products", href: "/products" }, { label: p?.title ?? "Product" }]} fill>
+      <div className="flex-none px-6 pt-4">
+        {product.error && <LoadError message={product.error} retry={product.retry} />}
+        {!product.error && !p && <Skeleton className="h-6 w-64" />}
+        {p && (
+          <PageTitle
+            title={p.title}
+            sub={p.product_type ?? undefined}
+            tag={p.forecast_state === "stale" && p.forecast ? <span className="stale-tag align-middle font-normal">stale · {day(p.forecast.generated_at)}</span> : undefined}
+            answer={<Answer p={p} sellout={vis.shown} untested={vis.untested} />}
+          />
+        )}
+        {p && (
+          <div className="-mt-1 mb-3 flex overflow-hidden rounded-xl border border-edge bg-[#0f0f1c]">
+            <Cell label="In stock" chips={<SourceChip source="shopify" />} value={p.units.toLocaleString()} sub={`${p.by_location.length} ${p.by_location.length === 1 ? "location" : "locations"}`} onOpen={() => setOpen("stock")} />
+            <Cell
+              label="Likely sells, 14 days"
+              chips={<SourceChip source="kumo" />}
+              value={f ? rangeText(f) : "–"}
+              sub={f ? `middle ${Math.round(f.value)}` : "too few sales"}
+            />
+            {vis.shown && p.sellout && (
+              <Cell
+                label="Runs out"
+                chips={
+                  <>
+                    <SourceChip source="our_math" />
+                    {vis.untested && <UntestedTag />}
+                  </>
+                }
+                value={p.sellout.earliest_day === null ? "lasts" : runoutShort(p.sellout).replace("could run out ", "")}
+                sub={p.sellout.likely_day !== null ? `likely day ${p.sellout.likely_day}` : "past day 14"}
+                valueClass={p.sellout.earliest_day === null ? "text-muted" : RISK_TEXT[p.sellout.band]}
+                onOpen={() => setOpen("runout")}
+              />
+            )}
+            <Cell
+              label="Last check"
+              chips={
+                <>
+                  <SourceChip source="kumo" />
+                  <SourceChip source="shopify" />
+                </>
+              }
+              value={latest ? (resultOf(latest) === "inside" ? "inside" : resultOf(latest) === "above" ? "sold more" : "sold less") : "–"}
+              sub={latest ? `${held} of ${p.track_record.length} held` : "first check later"}
+            />
+            <Cell
+              label="Most bought with"
+              chips={<SourceChip source="shopify" />}
+              value={<span className="font-sans text-[15px] font-medium">{together[0]?.title ?? "–"}</span>}
+              sub={together[0] ? `${together[0].orders.toLocaleString()} orders` : undefined}
+            />
+          </div>
+        )}
+      </div>
+
       {p && (
-        <PageTitle
-          title={p.title}
-          sub={p.product_type ?? undefined}
-          tag={p.forecast_state === "stale" && p.forecast ? <span className="stale-tag align-middle font-normal">stale · {day(p.forecast.generated_at)}</span> : undefined}
-          answer={<Answer p={p} sellout={vis.shown} untested={vis.untested} />}
-        />
+        <div className="flex min-h-0 flex-1 border-t border-edge">
+          <section className="relative min-w-0 flex-1 overflow-hidden" style={{ background: STAGE_BACKGROUND }} aria-label="Stage">
+            {view === "skyline" && (
+              <SalesSkyline sales={p.sales} forecast={f} stale={p.forecast_state === "stale"} stock={p.units} likelyOutDay={outDay} showStock={showStock} untested={vis.untested} />
+            )}
+            {view === "pairs" &&
+              (inGalaxy && pairs.data ? (
+                <div className="absolute inset-0">
+                  <BasketGalaxy pairs={pairs.data} products={overview.data?.products} focusId={id} />
+                </div>
+              ) : (
+                <div className="absolute inset-0 overflow-auto px-7 py-6">
+                  <Panel title={<>Often bought in the same order<span className="source-chip">Shopify</span></>}>
+                    {together.length > 0 ? <BoughtList rows={together} /> : <Empty>Not enough shared orders yet.</Empty>}
+                  </Panel>
+                </div>
+              ))}
+            {view === "track" && (
+              <div className="absolute inset-0 overflow-auto px-7 pb-10 pt-6">
+                <div className="mb-1 flex items-center text-[15px] font-semibold">
+                  Track record<span className="source-chip">Kumo</span>
+                  <span className="source-chip">Shopify</span>
+                </div>
+                <p className="mb-5 max-w-[720px] text-xs text-muted">
+                  Every past range for {p.title} whose 14 days are over, next to what really sold. A white dot inside the band means Kumo&apos;s range held.
+                </p>
+                {p.track_record.length === 0 ? (
+                  <p className="text-muted">{FIRST_CHECK}</p>
+                ) : (
+                  <TrackGrid>
+                    {p.track_record.length > 1 && (
+                      <TrackSummaryCard
+                        label={`Last ${p.track_record.length} checks`}
+                        name="Kumo's ranges held for"
+                        held={held}
+                        total={p.track_record.length}
+                        unit="checks"
+                        dots={p.track_record.map((r) => ({ key: r.generated_at, title: `Made ${dayName(r.generated_at)}`, inside: resultOf(r) === "inside" }))}
+                      />
+                    )}
+                    {p.track_record.map((r) => (
+                      <TrackProductCard key={r.generated_at} kicker={`Kumo said, ${dayName(r.generated_at)}`} name={p.title} r={r} result={resultOf(r)} />
+                    ))}
+                  </TrackGrid>
+                )}
+              </div>
+            )}
+          </section>
+
+          <aside className={`flex flex-none flex-col overflow-y-auto border-l border-edge bg-[#0f0f1c] transition-[width] duration-300 ${slim ? "w-[136px]" : "w-[372px]"}`}>
+            {!slim && <div className="px-4 pb-1.5 pt-3.5 text-[10px] uppercase tracking-[0.08em] text-[#55556d]">Look closer: pick one for the stage</div>}
+            <Instrument
+              on={view === "skyline"}
+              slim={slim}
+              title="Sales skyline"
+              chips={
+                <>
+                  <SourceChip source="shopify" />
+                  <SourceChip source="kumo" />
+                </>
+              }
+              line={
+                f ? (
+                  <>
+                    Sold <b className="font-mono">{p.sold_14d.toLocaleString()}</b> last 14 days, likely <b className="font-mono">{rangeText(f)}</b> next 14
+                  </>
+                ) : (
+                  <>
+                    Sold <b className="font-mono">{p.sold_14d.toLocaleString()}</b> last 14 days; too few sales to predict
+                  </>
+                )
+              }
+              thumb={<SkylineThumb p={p} outDay={outDay} />}
+              onClick={() => setView("skyline")}
+            />
+            <Instrument
+              on={view === "pairs"}
+              slim={slim}
+              title="Bought together"
+              chips={<SourceChip source="shopify" />}
+              line={
+                together.length > 0 ? (
+                  <>
+                    Most with <b>{together[0].title}</b>
+                    {together[1] ? <>, then {together[1].title}</> : null}
+                  </>
+                ) : (
+                  "Not enough shared orders yet."
+                )
+              }
+              thumb={<PairsThumb rows={together} />}
+              onClick={() => setView("pairs")}
+            />
+            <Instrument
+              on={view === "track"}
+              slim={slim}
+              title="Track record"
+              chips={
+                <>
+                  <SourceChip source="kumo" />
+                  <SourceChip source="shopify" />
+                </>
+              }
+              line={
+                latest ? (
+                  <>
+                    Kumo&apos;s range held <b>{held} of {p.track_record.length}</b> times. Last: {RESULT_WORDS[resultOf(latest)]}
+                  </>
+                ) : (
+                  FIRST_CHECK
+                )
+              }
+              thumb={latest ? <TrackThumb rows={p.track_record} /> : <span />}
+              onClick={() => setView("track")}
+            />
+            {!slim && page.data && SHOW_SAMPLES && <SampleCards rows p={p} sections={page.data.sections} others={together.map((t) => t.title)} />}
+            {!slim && (
+              <div className="px-4 pb-4">
+                <SectionList compact skip={vis.shown ? ["runs_out"] : []} state={page.data} error={page.error} retry={page.retry} heading={<SectionTitle>Not ready yet</SectionTitle>} />
+              </div>
+            )}
+          </aside>
+        </div>
       )}
-      <div ref={ref} className="w-full">
-        {p && width > 0 && (
-          <>
-            <SectionTitle>
-              Sold per day, then the likely range per day<span className="source-chip">Shopify</span>
-              <span className="source-chip">Kumo</span>
-            </SectionTitle>
-            <SalesChart p={p} width={width} />
-            {p.forecast_state !== "too_few_sales" && p.forecast ? (
-              <p className="mt-1 text-[11px] text-muted">
-                Kumo gives one range for all 14 days; it is spread evenly here. Day-by-day forecasts come later.
-              </p>
-            ) : (
-              <p className="mt-1 text-[11px] italic text-muted">too few sales to predict</p>
-            )}
 
-            {showStock && (
-              <>
-                <SectionTitle>
-                  Stock left after each day<span className="source-chip">Our math</span>
-                  {vis.untested && <UntestedTag />}
-                </SectionTitle>
-                <StockChart p={p} width={width} />
-              </>
-            )}
-
-            <div className="mt-2 grid grid-cols-1 gap-x-7 lg:grid-cols-2">
+      {p && (
+        <>
+          <Modal open={open === "stock"} onClose={close} title="Stock" chips={<SourceChip source="shopify" />}>
+            <div className="grid grid-cols-1 gap-x-7 px-7 pb-10 pt-2 lg:grid-cols-2">
               <Panel title={<>Stock per location<span className="source-chip">Shopify</span></>}>
                 {p.by_location.length === 0 ? (
                   <Empty>Not stocked at any location.</Empty>
@@ -275,9 +488,11 @@ export default function ProductPage() {
                   ))
                 )}
               </Panel>
-              {p.by_variant.length > 1 && (
-                <Panel title={<>Stock per size or variant<span className="source-chip">Shopify</span></>}>
-                  {p.by_variant.map((v) => (
+              <Panel title={<>Stock per size or variant<span className="source-chip">Shopify</span></>}>
+                {p.by_variant.length === 0 ? (
+                  <Empty>No variants.</Empty>
+                ) : (
+                  p.by_variant.map((v) => (
                     <Row key={v.id}>
                       <span>
                         {v.title ?? v.sku ?? "Variant"}
@@ -285,40 +500,49 @@ export default function ProductPage() {
                       </span>
                       <span className="font-mono text-xs">{v.units.toLocaleString()}</span>
                     </Row>
-                  ))}
-                </Panel>
-              )}
-              <Panel title={<>Often bought in the same order<span className="source-chip">Shopify</span></>}>
-                {p.bought_together.length === 0 ? (
-                  <Empty>Not enough shared orders yet</Empty>
-                ) : (
-                  p.bought_together.map((b) => (
-                    <Row key={b.product_id}>
-                      <Link href={`/products/${encodeURIComponent(b.product_id)}`} className="hover:text-accent">
-                        {b.title}
-                      </Link>
-                      <span className="text-xs text-muted">
-                        in <span className="font-mono text-[#e7e7f0]">{b.orders.toLocaleString()}</span> orders
-                      </span>
-                    </Row>
                   ))
                 )}
               </Panel>
-              <Panel
-                title={
-                  <>
-                    Track record<span className="source-chip">Kumo</span>
-                    <span className="source-chip">Shopify</span>
-                  </>
-                }
-              >
-                <TrackRecord rows={p.track_record} />
-              </Panel>
             </div>
-          </>
-        )}
-      </div>
-      <SectionList compact skip={vis.shown ? ["runs_out"] : []} state={page.data} error={page.error} retry={page.retry} heading={<SubHeading>Not ready yet</SubHeading>} />
+          </Modal>
+          {vis.shown && p.sellout && (
+            <Modal
+              open={open === "runout"}
+              onClose={close}
+              title="Could run out"
+              chips={
+                <>
+                  <SourceChip source="our_math" />
+                  {vis.untested && <UntestedTag />}
+                </>
+              }
+            >
+              <div className="px-7 pb-10 pt-6">
+                <p className="mb-5 max-w-[760px] text-muted">
+                  {p.units.toLocaleString()} in stock against Kumo&apos;s range of {f ? rangeText(f) : "–"} for the next 14 days, spread evenly over the days. Bar =
+                  earliest to latest day it could run out, dot = most likely day.
+                </p>
+                <RunoutChart rows={[{ key: p.id, title: p.title, sellout: p.sellout, stale: p.forecast_state === "stale" }]} />
+                {showStock && <StockLeft p={p} untested={vis.untested} />}
+              </div>
+            </Modal>
+          )}
+        </>
+      )}
     </PageShell>
+  );
+}
+
+/** The stock-left chart (our math) at full width. */
+function StockLeft({ p, untested }: { p: ProductDetail; untested: boolean }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  return (
+    <div ref={ref} className="mt-8 w-full">
+      <SectionTitle>
+        Stock left after each day<span className="source-chip">Our math</span>
+        {untested && <UntestedTag />}
+      </SectionTitle>
+      {width > 0 && <StockChart p={p} width={width} />}
+    </div>
   );
 }

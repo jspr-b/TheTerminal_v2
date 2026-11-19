@@ -149,6 +149,67 @@ export interface ProductsOverview {
   products: OverviewProduct[];
 }
 
+// ---- Bought together (exact Shopify data, no prediction) ----
+
+export interface PairNode {
+  id: string;
+  title: string;
+  product_type: string | null;
+  /** Units sold in the window. */
+  sold: number;
+  /** Orders with this product in the window. */
+  orders: number;
+  /** Distinct customers among those orders (orders without a customer are not counted). */
+  customers: number;
+  /** Customers with more than one of those orders. */
+  repeat_customers: number;
+  /** Units refunded in the window. */
+  returned: number;
+}
+
+export interface PairLink {
+  /** Product ids; each pair appears once. */
+  source: string;
+  target: string;
+  orders: number;
+}
+
+export interface ProductPairs {
+  /** Window: the last `days` days of orders (cancelled excluded). */
+  days: number;
+  /** A pair needs at least this many shared orders. */
+  min_orders: number;
+  nodes: PairNode[];
+  links: PairLink[];
+}
+
+// ---- Track record (latest Kumo demand run whose 14 days are over) ----
+
+export type TrackResult = "inside" | "above" | "below";
+
+export interface TrackRecordProduct {
+  product_id: string;
+  title: string;
+  lower: number;
+  value: number;
+  upper: number;
+  actual: number;
+  /** above = sold more than the top of the range. */
+  result: TrackResult;
+}
+
+export interface TrackRecord {
+  /** When that run's range was made; null = no finished window yet. */
+  window_start: string | null;
+  window_end: string | null;
+  checked: number;
+  inside: number;
+  above: number;
+  below: number;
+  /** Sorted: above, below, inside, then by how far off. */
+  products: TrackRecordProduct[];
+}
+
 // ---- Customers ----
 
 export interface CustomerRegion {
@@ -248,6 +309,14 @@ export function getProductsOverview(merchantId: string): Promise<ProductsOvervie
 
 export function getProduct(merchantId: string, productId: string): Promise<ProductDetail> {
   return get<ProductDetail>(`/merchants/${enc(merchantId)}/products/${enc(productId)}`);
+}
+
+export function getProductPairs(merchantId: string): Promise<ProductPairs> {
+  return get<ProductPairs>(`/merchants/${enc(merchantId)}/products/pairs`);
+}
+
+export function getTrackRecord(merchantId: string): Promise<TrackRecord> {
+  return get<TrackRecord>(`/merchants/${enc(merchantId)}/products/track-record`);
 }
 
 export function getCustomerRegions(merchantId: string): Promise<CustomerRegions> {

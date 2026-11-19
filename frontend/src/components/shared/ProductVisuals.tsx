@@ -102,7 +102,10 @@ export function StockVsRange({
   color,
   dashed = false,
   height = 40,
+  scaleMax,
 }: {
+  /** Shared scale for rows that must be compared (default: this row's own largest value). */
+  scaleMax?: number;
   width: number;
   units: number;
   range: { lower: number; value: number; upper: number } | null;
@@ -111,7 +114,7 @@ export function StockVsRange({
   height?: number;
 }) {
   if (width <= 0) return null;
-  const max = Math.max(1, units, range?.upper ?? 0) * 1.08;
+  const max = (scaleMax ?? Math.max(1, units, range?.upper ?? 0)) * 1.08;
   const x = (v: number) => (Math.max(0, v) / max) * width;
   const mid = height / 2;
   return (
@@ -143,9 +146,8 @@ export function StockVsRange({
 export const runoutX = (width: number, d: number) => 8 + (d / 15) * (width - 16);
 
 /** Day axis for the run-out strip: 0..14 and 14+. Lines up exactly with RunoutStrip of the same width. */
-export function RunoutAxis({ width }: { width: number }) {
+export function RunoutAxis({ width, ticks = [0, 2, 4, 6, 8, 10, 12, 14], plus = true }: { width: number; ticks?: number[]; plus?: boolean }) {
   if (width <= 0) return null;
-  const ticks = [0, 2, 4, 6, 8, 10, 12, 14];
   return (
     <span className="relative block h-3.5" style={{ width }}>
       {ticks.map((d) => (
@@ -153,9 +155,11 @@ export function RunoutAxis({ width }: { width: number }) {
           {d}
         </span>
       ))}
-      <span className="absolute -translate-x-1/2 font-mono" style={{ left: runoutX(width, 15) }}>
-        14+
-      </span>
+      {plus && (
+        <span className="absolute -translate-x-1/2 font-mono" style={{ left: runoutX(width, 15) }}>
+          14+
+        </span>
+      )}
     </span>
   );
 }

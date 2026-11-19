@@ -1,6 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import GalaxyPanel from "@/components/products/GalaxyPanel";
+import InsightStrip from "@/components/products/InsightStrip";
+import BasketGalaxy from "@/components/shared/BasketGalaxy";
+import Modal from "@/components/shared/Modal";
+import SourceChip from "@/components/shared/SourceChip";
 import PageShell, { PageTitle, SubHeading } from "@/components/shell/PageShell";
 import { rangeText } from "@/components/shared/Forecast";
 import { LoadError, Skeleton, useLoad } from "@/components/shared/Load";
@@ -9,8 +16,6 @@ import {
   DIM,
   RISK_COLOR,
   RISK_TEXT,
-  RunoutAxis,
-  RunoutStrip,
   Sparkline,
   StockVsRange,
   UntestedTag,
@@ -18,24 +23,25 @@ import {
   selloutVisibility,
   useWidth,
 } from "@/components/shared/ProductVisuals";
+import { RunoutChip } from "@/components/shared/Runout";
 import { SectionList } from "@/components/shared/Sections";
-import { DEV_MERCHANT, getPageState, getProductsOverview, type OverviewProduct, type Sellout } from "@/lib/api";
+import { DEV_MERCHANT, getPageState, getProductPairs, getProductsOverview, getTrackRecord, type OverviewProduct, type Sellout } from "@/lib/api";
 import { day } from "@/lib/format";
 
-const SPARK_W = 118;
-const GAP = 24;
-const TEXT_W = 92; // the range as text, next to the stock-vs-range bar
-const MIN_RANGE = 230;
-const MIN_RUNOUT = 210;
+const SPARK_W = 96;
+const GAP = 16;
+const MIN_RANGE = 140;
+const RUNOUT_W = 168; // a plain chip: "could run out day 3–6"; the chart lives in the "Could run out" pop-up
+const OPEN_W = 44;
 
-/** Column widths from the page width. Below the minimums the rows scroll sideways instead of squeezing. */
+/** Column widths from the list width. Below the minimums the rows scroll sideways instead of squeezing. */
 function columns(width: number, sellout: boolean) {
-  const name = width < 1000 ? 180 : 230;
-  const rest = width - name - SPARK_W - GAP * (sellout ? 3 : 2);
-  const range = sellout ? Math.max(MIN_RANGE, Math.floor(rest * 0.52)) : Math.max(MIN_RANGE, rest);
-  const runout = sellout ? Math.max(MIN_RUNOUT, rest - range) : 0;
-  const template = sellout ? `${name}px ${SPARK_W}px ${range}px ${runout}px` : `${name}px ${SPARK_W}px ${range}px`;
-  const total = name + SPARK_W + range + runout + GAP * (sellout ? 3 : 2);
+  const name = width < 760 ? 190 : 236;
+  const n = sellout ? 4 : 3;
+  const runout = sellout ? RUNOUT_W : 0;
+  const range = Math.max(MIN_RANGE, width - name - SPARK_W - runout - OPEN_W - GAP * n);
+  const template = sellout ? `${name}px ${SPARK_W}px ${range}px ${runout}px ${OPEN_W}px` : `${name}px ${SPARK_W}px ${range}px ${OPEN_W}px`;
+  const total = name + SPARK_W + range + runout + OPEN_W + GAP * n;
   return { range, runout, template, total };
 }
 
@@ -60,7 +66,21 @@ function Answer({ products, sellout }: { products: OverviewProduct[]; sellout: b
   );
 }
 
-function ProductRow({ p, cols, sellout }: { p: OverviewProduct; cols: ReturnType<typeof columns>; sellout: boolean }) {
+function ProductRow({
+  p,
+  cols,
+  sellout,
+  selected,
+  onSelect,
+  onOpen,
+}: {
+  p: OverviewProduct;
+  cols: ReturnType<typeof columns>;
+  sellout: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onOpen: () => void;
+}) {
   const predicted = p.forecast_state !== "too_few_sales" && p.forecast !== null;
   const stale = p.forecast_state === "stale";
   const color = stale ? DIM : sellout && p.sellout ? RISK_COLOR[p.sellout.band] : ACCENT;
@@ -73,42 +93,47 @@ function ProductRow({ p, cols, sellout }: { p: OverviewProduct; cols: ReturnType
     .filter(Boolean)
     .join(", ");
   return (
-    <Link
-      href={`/products/${encodeURIComponent(p.id)}`}
-      aria-label={label}
-      title={label}
-      className="grid items-center border-b border-white/[0.07] py-2 hover:bg-white/[0.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+    <div
+      data-product={p.id}
+      aria-selected={selected}
+      onClick={onSelect}
+      onDoubleClick={onOpen}
+      title={`${label}. Double-click to open.`}
+      className={`grid cursor-pointer items-center border-b border-white/[0.07] py-1.5 pl-2 ${
+        selected ? "bg-accent/[0.09] shadow-[inset_2px_0_0_#7c8cff]" : "hover:bg-white/[0.02]"
+      }`}
       style={{ gridTemplateColumns: cols.template, columnGap: GAP }}
     >
-      <div className="min-w-0">
+      <button type="button" onClick={onSelect} aria-label={`Select ${label}`} aria-pressed={selected} className="min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
         <div className="flex items-baseline">
           <b className="truncate font-medium">{p.title}</b>
           {stale && p.forecast && <span className="stale-tag font-normal">stale · {day(p.forecast.generated_at)}</span>}
         </div>
-        {p.product_type && <div className="truncate text-[11px] text-muted">{p.product_type}</div>}
-        <div className="text-[11px] text-muted">
-          <span className="font-mono">{p.units.toLocaleString()}</span> in stock · sold{" "}
-          <span className="font-mono">{p.sold_14d.toLocaleString()}</span> in the last 14 days
+        <div className="text-[11px] leading-snug text-muted">
+          <span className="font-mono">{p.units.toLocaleString()}</span> in stock · sold <span className="font-mono">{p.sold_14d.toLocaleString()}</span> in 14 days
         </div>
-        {!predicted && <div className="text-[11px] italic text-muted">too few sales to predict</div>}
-      </div>
-      <Sparkline values={p.sales_28d} width={SPARK_W} />
-      <div className="flex items-center gap-2">
-        <StockVsRange width={cols.range - TEXT_W - 8} units={p.units} range={predicted ? p.forecast : null} color={color} dashed={stale} />
-        <div className="w-[92px] flex-none text-[11px] leading-tight text-muted">
+        <div className="text-[11px] leading-snug text-muted">
           {predicted && p.forecast ? (
             <>
-              <span className="font-mono text-[#e7e7f0]">{rangeText(p.forecast)}</span>
-              <br />
-              likely sold
+              likely sells <span className="font-mono text-[#e7e7f0]">{rangeText(p.forecast)}</span> next 14 days
             </>
           ) : (
-            <span className="italic">no range</span>
+            <span className="italic">too few sales to predict</span>
           )}
         </div>
-      </div>
-      {sellout && (p.sellout ? <RunoutStrip width={cols.runout} sellout={p.sellout} dashed={stale} /> : <div />)}
-    </Link>
+      </button>
+      <Sparkline values={p.sales_28d} width={SPARK_W} />
+      <StockVsRange width={cols.range} units={p.units} range={predicted ? p.forecast : null} color={color} dashed={stale} height={34} />
+      {sellout && (p.sellout ? <RunoutChip sellout={p.sellout} stale={stale} /> : <div />)}
+      <Link
+        href={`/products/${encodeURIComponent(p.id)}`}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={`Open ${p.title}`}
+        className="justify-self-end rounded-md border border-edge px-1.5 py-0.5 text-[11px] text-muted hover:border-accent/50 hover:text-[#e7e7f0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      >
+        Open
+      </Link>
+    </div>
   );
 }
 
@@ -126,72 +151,123 @@ function Legend({ sellout }: { sellout: boolean }) {
       {sellout && (
         <span>
           <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm bg-[#f87171]/35 align-middle" />
-          Earliest to latest run-out day, dot = most likely
+          Could run out: earliest to latest day (the top strip has the day-by-day chart)
         </span>
       )}
       <span>
         <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm border border-dashed border-[#55556d] align-middle" />
         Stale range
       </span>
-      <span>Click a product for its page</span>
+      <span>Click a product to see it in the galaxy; Open or double-click for its page</span>
     </div>
   );
 }
 
 export default function ProductsPage() {
+  const router = useRouter();
   const overview = useLoad(() => getProductsOverview(DEV_MERCHANT), `products-overview:${DEV_MERCHANT}`);
   const page = useLoad(() => getPageState(DEV_MERCHANT, "products"), `page:products:${DEV_MERCHANT}`);
+  const pairs = useLoad(() => getProductPairs(DEV_MERCHANT), `products-pairs:${DEV_MERCHANT}`);
+  const track = useLoad(() => getTrackRecord(DEV_MERCHANT), `track-record:${DEV_MERCHANT}`);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [galaxyOpen, setGalaxyOpen] = useState(false);
+  const closeGalaxy = useCallback(() => setGalaxyOpen(false), []);
   const [ref, width] = useWidth<HTMLDivElement>();
+  const listRef = useRef<HTMLDivElement>(null);
   const products = overview.data?.products ?? [];
   const vis = selloutVisibility(products.map((p) => p.sellout));
   const cols = columns(width, vis.shown);
   const sorted = sortProducts(products, vis.shown);
 
+  // A product picked in the galaxy scrolls into view in the list.
+  useEffect(() => {
+    if (selected === null) return;
+    const row = listRef.current?.querySelector(`[data-product="${CSS.escape(selected)}"]`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selected]);
+
+  const open = (id: string) => router.push(`/products/${encodeURIComponent(id)}`);
+
   return (
-    <PageShell crumbs={[{ label: "Products" }]}>
-      <PageTitle title="Products" answer={overview.data ? <Answer products={products} sellout={vis.shown} /> : undefined} />
-      {overview.error && <LoadError message={overview.error} retry={overview.retry} />}
-      <div ref={ref} className="w-full overflow-x-auto">
-        {!overview.error && width > 0 && (
-          <div style={{ width: cols.total }}>
-            <div
-              className="grid items-end border-b border-edge pb-1 text-[10px] text-muted"
-              style={{ gridTemplateColumns: cols.template, columnGap: GAP }}
-            >
-              <span>Product</span>
-              <span>
-                Sold per day, 28 days<span className="source-chip">Shopify</span>
-              </span>
-              <span>
-                Stock <span className="text-[#e7e7f0]">|</span> against what it will likely sell in 14 days
-                <span className="source-chip">Shopify</span>
-                <span className="source-chip">Kumo</span>
-              </span>
-              {vis.shown && (
-                <span>
-                  <span className="mb-0.5 block">
-                    Could run out on day…<span className="source-chip">Our math</span>
-                    {vis.untested && <UntestedTag />}
-                  </span>
-                  <RunoutAxis width={cols.runout} />
-                </span>
-              )}
-            </div>
-            {!overview.data &&
-              [0, 1, 2].map((i) => (
-                <div key={i} className="border-b border-white/[0.07] py-3">
-                  <Skeleton className="h-3 w-48" />
-                </div>
-              ))}
-            {overview.data && products.length === 0 && <p className="py-4 text-muted">No products in Shopify yet.</p>}
-            {sorted.map((p) => (
-              <ProductRow key={p.id} p={p} cols={cols} sellout={vis.shown} />
-            ))}
-            {overview.data && products.length > 0 && <Legend sellout={vis.shown} />}
-          </div>
-        )}
+    <PageShell crumbs={[{ label: "Products" }]} fill>
+      <div className="flex-none px-6 pt-4">
+        <PageTitle title="Products" answer={overview.data ? <Answer products={products} sellout={vis.shown} /> : undefined} />
+        <div className="-mt-1 mb-3">
+          <InsightStrip
+            pairs={pairs}
+            track={track}
+            onOpenPairs={() => setGalaxyOpen(true)}
+            runout={vis.shown ? { untested: vis.untested, rows: products.flatMap((p) => (p.sellout ? [{ key: p.id, title: p.title, href: `/products/${encodeURIComponent(p.id)}`, sellout: p.sellout, stale: p.forecast_state === "stale" }] : [])) } : null}
+          />
+        </div>
       </div>
-      <SectionList compact skip={vis.shown ? ["sellout_risk"] : []} state={page.data} error={page.error} retry={page.retry} heading={<SubHeading>Not ready yet</SubHeading>} />
+      <div className="flex min-h-0 flex-1 border-t border-edge">
+        <div ref={listRef} className="min-w-0 flex-1 overflow-auto px-6 pb-8">
+          {overview.error && <LoadError message={overview.error} retry={overview.retry} />}
+          <div ref={ref} className="w-full">
+            {!overview.error && width > 0 && (
+              <div style={{ width: cols.total }}>
+                <div
+                  className="sticky top-0 z-[1] grid items-end border-b border-edge bg-[#080812] pb-1 pl-2 pt-3 text-[10px] text-muted"
+                  style={{ gridTemplateColumns: cols.template, columnGap: GAP }}
+                >
+                  <span>Product</span>
+                  <span>
+                    Sold per day, 28 days<span className="source-chip">Shopify</span>
+                  </span>
+                  <span>
+                    Stock <span className="text-[#e7e7f0]">|</span> against likely sold in 14 days
+                    <span className="source-chip">Shopify</span>
+                    <span className="source-chip">Kumo</span>
+                  </span>
+                  {vis.shown && (
+                    <span className="whitespace-nowrap">
+                      Could run out<span className="source-chip">Our math</span>
+                      {vis.untested && <UntestedTag />}
+                    </span>
+                  )}
+                  <span />
+                </div>
+                {!overview.data &&
+                  [0, 1, 2].map((i) => (
+                    <div key={i} className="border-b border-white/[0.07] py-3">
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  ))}
+                {overview.data && products.length === 0 && <p className="py-4 text-muted">No products in Shopify yet.</p>}
+                {sorted.map((p) => (
+                  <ProductRow
+                    key={p.id}
+                    p={p}
+                    cols={cols}
+                    sellout={vis.shown}
+                    selected={selected === p.id}
+                    onSelect={() => setSelected((s) => (s === p.id ? s : p.id))}
+                    onOpen={() => open(p.id)}
+                  />
+                ))}
+                {overview.data && products.length > 0 && <Legend sellout={vis.shown} />}
+              </div>
+            )}
+          </div>
+          <SectionList compact skip={vis.shown ? ["sellout_risk"] : []} state={page.data} error={page.error} retry={page.retry} heading={<SubHeading>Not ready yet</SubHeading>} />
+        </div>
+        <GalaxyPanel
+          pairs={pairs}
+          track={track.data}
+          products={products}
+          selected={selected}
+          onSelect={setSelected}
+          onExpand={() => setGalaxyOpen(true)}
+        />
+      </div>
+      {pairs.data && (
+        <Modal open={galaxyOpen} onClose={closeGalaxy} title="Bought together" chips={<SourceChip source="shopify" />}>
+          <div className="absolute inset-0">
+            <BasketGalaxy pairs={pairs.data} products={products} focusId={selected} onFocus={setSelected} />
+          </div>
+        </Modal>
+      )}
     </PageShell>
   );
 }

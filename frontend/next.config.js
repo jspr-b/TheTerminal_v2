@@ -16,6 +16,10 @@ module.exports = (phase) => {
   if (phase === PHASE_PRODUCTION_BUILD && process.env.NEXT_PUBLIC_SHOW_UNTESTED) {
     throw new Error("NEXT_PUBLIC_SHOW_UNTESTED is set. Untested predictions must not reach a production build.");
   }
+  // Made-up sample cards are a local design preview only: never in a shipped build.
+  if (phase === PHASE_PRODUCTION_BUILD && process.env.NEXT_PUBLIC_SHOW_SAMPLES) {
+    throw new Error("NEXT_PUBLIC_SHOW_SAMPLES is set. Sample (made-up) data must not reach a production build.");
+  }
   /** @type {import('next').NextConfig} */
   return { reactStrictMode: true };
 };
