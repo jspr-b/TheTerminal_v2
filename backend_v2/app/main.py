@@ -20,7 +20,7 @@ from .kumo import KumoClient
 from .kumo_local import LocalKumo
 from .nango import NangoClient, RecordSource
 from .ontology import OntologyService
-from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductsOverview
+from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductPairs, ProductsOverview, TrackRecord
 
 logging.basicConfig(level=logging.INFO)
 bearer = HTTPBearer(auto_error=False)
@@ -159,6 +159,20 @@ async def heatmap(layer: str, merchant: Merchant, svc: Service, settings: Settin
 async def products_overview(merchant: Merchant, svc: Service) -> dict:
     """The Products page. Registered before /products/{product_id} so "overview" is never read as an id."""
     return {"products": await svc.products_overview(merchant)}
+
+
+PAIR_DAYS, MIN_SHARED = 90, 2
+
+
+@app.get("/merchants/{merchant_id}/products/pairs", response_model=ProductPairs)
+async def product_pairs(merchant: Merchant, svc: Service) -> dict:
+    """The basket galaxy: products bought in the same order (exact Shopify data)."""
+    return await svc.product_pairs(merchant, PAIR_DAYS, MIN_SHARED)
+
+
+@app.get("/merchants/{merchant_id}/products/track-record", response_model=TrackRecord)
+async def track_record(merchant: Merchant, svc: Service) -> dict:
+    return await svc.shop_track_record(merchant)
 
 
 @app.get("/merchants/{merchant_id}/products/{product_id}", response_model=ProductDetail)

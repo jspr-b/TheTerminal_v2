@@ -170,6 +170,50 @@ class OverviewProduct(BaseModel):
     sellout: Sellout | None
 
 
+class PairNode(BaseModel):
+    id: UUID
+    title: str
+    product_type: str | None
+    sold: int
+    orders: int             # orders with this product in the window
+    customers: int          # distinct customers among those orders (orders without a customer are not counted)
+    repeat_customers: int   # customers with more than one of those orders
+    returned: int           # units refunded in the window
+
+
+class PairLink(BaseModel):
+    source: UUID
+    target: UUID
+    orders: int
+
+
+class ProductPairs(BaseModel):
+    days: int
+    min_orders: int
+    nodes: list[PairNode]
+    links: list[PairLink]
+
+
+class TrackRecordProduct(BaseModel):
+    product_id: UUID
+    title: str
+    lower: float
+    value: float
+    upper: float
+    actual: int
+    result: Literal["inside", "above", "below"]
+
+
+class TrackRecord(BaseModel):
+    window_start: datetime | None
+    window_end: datetime | None
+    checked: int
+    inside: int
+    above: int
+    below: int
+    products: list[TrackRecordProduct]
+
+
 class ProductsOverview(BaseModel):
     products: list[OverviewProduct]
 

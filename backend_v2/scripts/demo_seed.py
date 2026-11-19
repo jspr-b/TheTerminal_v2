@@ -28,8 +28,16 @@ CITIES = [("Amsterdam", "Netherlands", 40), ("Rotterdam", "Netherlands", 22), ("
           ("Copenhagen", "Denmark", 7), ("Prague", "Czechia", 2)]  # Prague stays under the small-number rule
 PRODUCTS = [("Linen Shirt", "Shirts", (96.4, 130, 163.2), ["S", "M", "L"]), ("Canvas Tote", "Bags", (110, 150, 189.6), ["One size"]),
             ("Wool Scarf", "Accessories", (30, 44, 61), ["One size"]), ("Leather Belt", "Accessories", (18, 25, 37), ["85 cm", "95 cm"]),
-            ("Denim Jacket", "Outerwear", (22, 31, 45), ["S", "M", "L"]), ("Limited Print", "Art", None, ["A2"])]
-PICK = [130, 150, 44, 25, 31, 2]  # order mix roughly matches the ranges, so the track record is plausible
+            ("Denim Jacket", "Outerwear", (22, 31, 45), ["S", "M", "L"]), ("Limited Print", "Art", None, ["A2"]),
+            ("Cotton Tee", "Shirts", (120, 158, 205), ["S", "M", "L"]), ("Oxford Shirt", "Shirts", (42, 60, 84), ["S", "M", "L"]),
+            ("Market Bag", "Bags", (30, 41, 58), ["One size"]), ("Card Holder", "Accessories", (38, 55, 77), ["One size"]),
+            ("Bucket Hat", "Accessories", (19, 28, 40), ["S/M", "L/XL"]), ("Rain Shell", "Outerwear", (14, 21, 31), ["S", "M", "L"]),
+            ("Merino Crew", "Knitwear", (30, 44, 63), ["S", "M", "L"]), ("Knit Beanie", "Knitwear", (33, 47, 66), ["One size"]),
+            ("Silk Tie", "Accessories", (12, 18, 27), ["One size"]), ("Poster Set", "Art", (6, 10, 16), ["A3"])]
+PICK = [130, 150, 44, 25, 31, 2, 158, 60, 41, 55, 28, 21, 44, 47, 18, 10]  # order mix roughly matches the ranges
+# Products often bought together (index -> partner, chance): gives the basket galaxy its shape.
+PARTNERS = {0: [(1, .3), (3, .08)], 6: [(1, .2), (4, .1)], 12: [(13, .35)], 4: [(3, .12)], 7: [(14, .25)], 9: [(3, .15)], 8: [(1, .2)],
+            10: [(11, .2)], 13: [(2, .2)], 15: [(5, .5)]}
 
 
 def ins(c, table, **cols):
@@ -77,16 +85,22 @@ with psycopg.connect(URL, autocommit=True) as c:
         customers = [uuid.uuid4() for _ in range(max(2, weight // 2))]
         for cid in customers:
             ins(c, "customers", id=cid, merchant_id=M, source="shopify", external_id=f"c{cid}", city=city, country=country)
-        for _ in range(int(weight * 3.6)):  # about 60 days of orders
+        for _ in range(int(weight * 6.4)):  # about 60 days of orders
             n += 1
             oid, when = uuid.uuid4(), NOW - timedelta(days=rnd.uniform(0.2, 60))
-            lines = [rnd.choices(products, weights=PICK)[0]]
-            if lines[0] == products[0] and rnd.random() < .3:
-                lines.append(products[1])  # shirts often go with a tote
-            elif rnd.random() < .08:
+            first = rnd.choices(range(len(products)), weights=PICK)[0]
+            lines = [products[first]]
+            for partner, chance in PARTNERS.get(first, []):
+                if rnd.random() < chance:
+                    lines.append(products[partner])
+            if rnd.random() < .06:
                 lines.append(rnd.choices(products, weights=PICK)[0])
             ins(c, "orders", id=oid, merchant_id=M, source="shopify", external_id=f"o{n}", customer_id=rnd.choice(customers), ordered_at=when,
                 total=40 * len(lines), currency="EUR", ship_city=city, ship_country=country)
             for k, pid in enumerate(dict.fromkeys(lines)):
                 ins(c, "order_lines", merchant_id=M, source="shopify", external_id=f"ol{n}-{k}", order_id=oid, product_id=pid, quantity=rnd.randint(1, 2), price=40, ordered_at=when)
+            if rnd.random() < .04:  # a few returns, so the product facts are not all zero
+                rid = uuid.uuid4()
+                ins(c, "refunds", id=rid, merchant_id=M, source="shopify", external_id=f"r{n}", order_id=oid, refunded_at=when + timedelta(days=rnd.uniform(2, 9)), restock=True)
+                ins(c, "refund_lines", merchant_id=M, source="shopify", external_id=f"rl{n}", refund_id=rid, product_id=lines[0], quantity=1)
     print(jwt.encode({"sub": str(U), "aud": "authenticated", "exp": int(time.time()) + 7 * 86400}, SECRET, algorithm="HS256"))

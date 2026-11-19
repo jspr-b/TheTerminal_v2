@@ -194,6 +194,66 @@ class OntologyService:
                 "sold_14d": sum(s["units"] for s in sales[-14:]), "sellout": sellout(units, forecast) if forecast else None,
                 "by_variant": variants, "bought_together": together, "track_record": record}
 
+    async def product_pairs(self, merchant_id: UUID, days: int, min_orders: int) -> dict:
+        """Products bought in the same order over the last `days` days. Exact counts, each pair once."""
+        window = """select distinct l.order_id, l.product_id, l.quantity from order_lines l
+                    join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+                    where l.merchant_id = %(m)s and l.product_id is not null and o.cancelled_at is null
+                      and l.ordered_at >= now() - make_interval(days => %(d)s)"""
+        links = await self._all(
+            f"""with w as ({window}) select a.product_id as source, b.product_id as target, count(distinct a.order_id)::int as orders
+                from w a join w b on b.order_id = a.order_id and a.product_id < b.product_id
+                group by 1, 2 having count(distinct a.order_id) >= %(n)s order by orders desc""", {"m": merchant_id, "d": days, "n": min_orders})
+        nodes = await self._all(
+            f"""with w as ({window}) select p.id, p.title, p.product_type, sum(w.quantity)::int as sold
+                from w join products p on p.merchant_id = %(m)s and p.id = w.product_id group by p.id, p.title, p.product_type order by sold desc""",
+            {"m": merchant_id, "d": days})
+        # What Kumo gets to see per product, counts only: orders, customers, customers who bought it again, units returned.
+        buyers = {r["product_id"]: r for r in await self._all(
+            f"""with w as ({window}), per as (
+                  select w.product_id, o.customer_id, count(distinct w.order_id) as n from w
+                  join orders o on o.merchant_id = %(m)s and o.id = w.order_id group by 1, 2)
+                select product_id, sum(n)::int as orders, count(customer_id)::int as customers,
+                       count(customer_id) filter (where n > 1)::int as repeat_customers
+                from per group by product_id""", {"m": merchant_id, "d": days})}
+        returned = {r["product_id"]: r["units"] for r in await self._all(
+            """select rl.product_id, sum(rl.quantity)::int as units from refund_lines rl
+               join refunds r on r.merchant_id = rl.merchant_id and r.id = rl.refund_id
+               where rl.merchant_id = %(m)s and rl.product_id is not null and r.refunded_at >= now() - make_interval(days => %(d)s)
+               group by 1""", {"m": merchant_id, "d": days})}
+        for n in nodes:
+            b = buyers.get(n["id"], {})
+            n.update(orders=b.get("orders", 0), customers=b.get("customers", 0),
+                     repeat_customers=b.get("repeat_customers", 0), returned=returned.get(n["id"], 0))
+        return {"days": days, "min_orders": min_orders, "nodes": nodes, "links": links}
+
+    async def shop_track_record(self, merchant_id: UUID) -> dict:
+        """The latest demand run whose 14 days are over: each product's range next to what really sold."""
+        run = await self._one(
+            """select r.id, min(pr.generated_at) as start, min(pr.generated_at + make_interval(days => coalesce(pr.horizon_days, 14))) as "end"
+               from kumo_runs r join predictions pr on pr.merchant_id = r.merchant_id and pr.run_id = r.id and pr.target = %s
+               where r.merchant_id = %s and r.status = 'done'
+               group by r.id having max(pr.generated_at + make_interval(days => coalesce(pr.horizon_days, 14))) <= now()
+               order by start desc limit 1""", (DEMAND_QUERY, merchant_id))
+        empty = {"window_start": None, "window_end": None, "checked": 0, "inside": 0, "above": 0, "below": 0, "products": []}
+        if run is None:
+            return empty
+        rows = await self._all(
+            """select pr.entity_id as product_id, p.title, pr.lower::float, pr.value::float, pr.upper::float,
+                      (select coalesce(sum(l.quantity), 0) from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id
+                       where l.merchant_id = pr.merchant_id and l.product_id = pr.entity_id and o.cancelled_at is null
+                         and l.ordered_at >= pr.generated_at and l.ordered_at < pr.generated_at + make_interval(days => coalesce(pr.horizon_days, 14)))::int as actual
+               from predictions pr join products p on p.merchant_id = pr.merchant_id and p.id = pr.entity_id
+               where pr.merchant_id = %s and pr.run_id = %s and pr.target = %s""", (merchant_id, run["id"], DEMAND_QUERY))
+        for r in rows:
+            r["result"] = "above" if r["actual"] > r["upper"] else "below" if r["actual"] < r["lower"] else "inside"
+            r["_off"] = r["actual"] - r["upper"] if r["result"] == "above" else r["lower"] - r["actual"] if r["result"] == "below" else 0
+        order = {"above": 0, "below": 1, "inside": 2}
+        rows.sort(key=lambda r: (order[r["result"]], -r["_off"], r["title"]))
+        counts = {k: sum(r["result"] == k for r in rows) for k in order}
+        return {"window_start": run["start"], "window_end": run["end"], "checked": len(rows), **counts,
+                "products": [{k: v for k, v in r.items() if k != "_off"} for r in rows]}
+
     async def products_overview(self, merchant_id: UUID, days: int = 28) -> list[dict]:
         """Every product: exact stock and daily sales for 28 days, the latest Kumo range, and sell-out (our math)."""
         products = await self._all("select id, title, product_type from products where merchant_id = %s order by title", (merchant_id,))
