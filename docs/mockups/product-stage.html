@@ -38,7 +38,7 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .stage{flex:1;min-width:0;position:relative;background:radial-gradient(75% 75% at 50% 42%,#121427 0%,#0a0a14 55%,#05050b 100%);overflow:hidden}
 .stage canvas{display:block}
 .view{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s}.view.on{opacity:1;pointer-events:auto}
-.stitle{position:absolute;left:20px;top:16px;z-index:3;pointer-events:none}
+.stitle{position:absolute;left:20px;top:64px;z-index:3;pointer-events:none}
 .stitle .t{font-size:15px;font-weight:600;display:flex;align-items:center}.stitle .s{color:var(--muted);font-size:12px;margin-top:2px;max-width:520px}
 .legend{position:absolute;right:20px;top:18px;z-index:3;display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);pointer-events:none;text-align:right}
 .legend i{display:inline-block;width:12px;height:9px;border-radius:2px;margin-left:8px;vertical-align:-1px}
@@ -73,6 +73,13 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
 .srow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;margin-top:6px;border:1px dashed rgba(255,255,255,.18);border-radius:8px;font-size:12px;color:#c9c9d8}
 .srow b{font-weight:500;color:var(--text)}.srow .w{color:var(--muted);font-size:11px}
 .notready{padding:0 16px 18px;color:var(--dim);font-size:11px}
+.vsw{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--edge);border-radius:12px;background:rgba(12,12,22,.88)}
+.vsw button{padding:5px 11px;border-radius:8px;color:var(--muted);font-size:12px;white-space:nowrap}.vsw button.on{background:rgba(124,140,255,.18);color:var(--text)}
+.vsw .step{width:28px;height:28px;padding:0;border-radius:50%;border:1px solid var(--edge);text-align:center;font-size:14px;color:var(--text)}.vsw .step:disabled{opacity:.3}
+.soonwrap{position:absolute;inset:0;padding:70px 28px 28px;overflow:auto}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.scard{border:1px dashed rgba(255,255,255,.25);border-radius:12px;padding:12px 14px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 6px,transparent 6px 12px)}
+.sk{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.sb{font-family:var(--mono);font-size:24px;margin:6px 0 2px}.sw{font-size:11px;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -81,7 +88,7 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
   <a>Command</a><a class="on">Products</a><a>Customers</a><a>Ads</a><a>Support</a><a>Money</a><a>Connections</a>
 </nav>
 <main>
-  <div class="crumbs">Products <span>/</span> <b>Canvas Tote</b><span class="mock">Mockup · made-up demo data</span></div>
+  <div class="crumbs"><a href="products-world.html" style="color:var(--muted);text-decoration:none">← Products</a> <span>/</span> <b>Canvas Tote</b><span class="mock">Mockup · made-up demo data</span></div>
   <div class="head">
     <div>
       <h1>Canvas Tote<span class="type">Bags</span></h1>
@@ -107,6 +114,22 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
           <div class="s">Each tower is one day at one location. Solid: what sold, last 28 days. Glass: Kumo's likely range for the next 14 days, cap = top of the range.</div></div>
         <div class="legend"><span>sold<i style="background:#c9cbe0"></i></span><span>likely (middle)<i style="background:rgba(124,140,255,.75)"></i></span><span>top of range<i style="border:1px solid #9aa6ff"></i></span><span>stock gone<i style="background:rgba(248,113,113,.55)"></i></span></div>
       </div>
+      <!-- 4. features that are not connected yet: clearly made-up sample cards -->
+      <div class="view" data-view="soon"><div class="soonwrap">
+        <div class="stitle" style="position:static;margin-bottom:14px"><div class="t">Not connected yet<span class="sample">sample data</span></div>
+          <div class="s">Made-up numbers to judge the design. Shown in local development only, never to merchants.</div></div>
+        <div class="sgrid">
+          <div class="scard"><div class="sk">Units likely to come back</div><div class="sb">6–14</div><div class="sw">needs the refunds import</div></div>
+          <div class="scard"><div class="sk">Best ad platform</div><div class="sb">Meta</div><div class="sw">connect an ads app</div></div>
+          <div class="scard"><div class="sk">What customers buy next</div><div class="sb">Linen Shirt</div><div class="sw">a new Kumo question</div></div>
+          <div class="scard"><div class="sk">Sudden change in sales</div><div class="sb">none</div><div class="sw">needs the GPU worker</div></div>
+        </div></div></div>
+      <!-- view switcher: the same ‹ › pattern as the Products world, no side menu -->
+      <div class="vsw" role="group" aria-label="View">
+        <button class="step" id="vprev" aria-label="Previous view">‹</button>
+        <button data-go="skyline" class="on">Sales skyline</button><button data-go="orbit">Bought together</button><button data-go="track">Track record</button><button data-go="soon">Not connected yet</button>
+        <button class="step" id="vnext" aria-label="Next view">›</button>
+      </div>
       <!-- 2 + 3. the approved basket-galaxy mockup, embedded (bought together and track record) -->
       <div class="view" data-view="orbit"><iframe class="emb" data-src="basket-galaxy.html?embed=1&view=galaxy&focus=Canvas%20Tote" title="Bought together"></iframe></div>
       <div class="view" data-view="track"><iframe class="emb" data-src="basket-galaxy.html?embed=1&view=record" title="Track record"></iframe></div>
@@ -118,30 +141,6 @@ main{flex:1;min-width:0;display:flex;flex-direction:column}
       </div>
     </section>
 
-    <aside class="rail">
-      <div class="rhead">Look closer: pick one for the stage</div>
-      <button class="inst on" data-go="skyline" title="Sales skyline">
-        <svg id="m-sky" width="104" height="46"></svg>
-        <div><div class="n">Sales skyline<span class="chip">Shopify</span><span class="chip">Kumo</span></div><div class="l">Sold <b class="num">158</b> last 14 days, likely <b class="num">110–190</b> next 14</div></div>
-      </button>
-      <button class="inst" data-go="orbit" title="Bought together">
-        <svg id="m-orb" width="104" height="46"></svg>
-        <div><div class="n">Bought together<span class="chip">Shopify</span></div><div class="l">Most with <b>Linen Shirt</b>, then Cotton Tee</div></div>
-      </button>
-      <button class="inst" data-go="track" title="Track record">
-        <svg id="m-trk" width="104" height="46"></svg>
-        <div><div class="n">Track record<span class="chip">Kumo</span><span class="chip">Shopify</span></div><div class="l">Kumo's range held <b>3 of 4</b> times</div></div>
-      </button>
-
-      <div class="rhead" style="margin-top:8px">Not connected yet<span class="sample">sample data</span></div>
-      <div class="soon">
-        <div class="srow"><span>Units likely to come back</span><span><b class="num">6–14</b> <span class="w">refunds import</span></span></div>
-        <div class="srow"><span>Best ad platform</span><span><b>Meta</b> <span class="w">connect Ads</span></span></div>
-        <div class="srow"><span>What customers buy next</span><span><b>Linen Shirt</b> <span class="w">new Kumo question</span></span></div>
-        <div class="srow"><span>Sudden change in sales</span><span><b>none</b> <span class="w">needs GPU</span></span></div>
-      </div>
-      <div class="notready">Sample rows: made-up numbers to judge the design, shown in local development only.</div>
-    </aside>
   </div>
 </main>
 
@@ -162,19 +161,22 @@ const outDay = arr => { const i = arr.findIndex(v => v <= 0); return i < 0 ? nul
 
 // ---------- stage switching ----------
 let current = "skyline";
+const ORDER = ["skyline", "orbit", "track", "soon"];
 const views = [...document.querySelectorAll(".view")];
 function go(v) {
   current = v;
   views.forEach(x => x.classList.toggle("on", x.dataset.view === v));
-  document.querySelectorAll(".inst").forEach(b => b.classList.toggle("on", b.dataset.go === v));
+  document.querySelectorAll(".vsw [data-go]").forEach(b => b.classList.toggle("on", b.dataset.go === v));
+  const i = ORDER.indexOf(v); document.getElementById("vprev").disabled = i === 0; document.getElementById("vnext").disabled = i === ORDER.length - 1;
   document.getElementById("scrub").style.display = v === "skyline" ? "flex" : "none";
-  document.querySelector(".rail").classList.toggle("slim", v !== "skyline");
   // load an embedded view the first time it is shown (keeps WebGL contexts down)
   const f = document.querySelector(`.view[data-view="${v}"] iframe`);
   if (f && !f.src) f.src = f.dataset.src;
   readout();
 }
-document.querySelectorAll(".inst").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+document.querySelectorAll(".vsw [data-go]").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+document.getElementById("vprev").onclick = () => go(ORDER[Math.max(0, ORDER.indexOf(current) - 1)]);
+document.getElementById("vnext").onclick = () => go(ORDER[Math.min(ORDER.length - 1, ORDER.indexOf(current) + 1)]);
 const dayInput = document.getElementById("day");
 dayInput.addEventListener("input", () => { readout(); highlight(); });
 function readout() {
@@ -346,27 +348,6 @@ new ResizeObserver(size).observe(sky); size(); highlight(); readout();
   controls.update(); renderer.render(scene, camera); overlays(); requestAnimationFrame(loop);
 })();
 window.__pick = (r, i) => pick(towers.find(t => t.r === r && t.i === i) || null);
-
-// ---------- rail thumbnails ----------
-const svg = (id, inner) => document.getElementById(id).innerHTML = inner;
-{ // skyline silhouette
-  let h = ""; const all = past[0].map((v, i) => v + past[1][i]);
-  all.slice(-18).forEach((v, i) => h += `<rect x="${i * 4}" y="${44 - v * 2}" width="3" height="${v * 2}" fill="#c9cbe0" opacity=".75"/>`);
-  ahead.slice(0, 8).forEach((a, i) => { const gone = i + 1 > outDay(leftMid); h += `<rect x="${72 + i * 4}" y="${44 - a.mid * 2}" width="3" height="${a.mid * 2}" fill="${gone ? "#f87171" : "#7c8cff"}" opacity=".7"/><rect x="${72 + i * 4}" y="${44 - a.hi * 2}" width="3" height="${a.hi * 2}" fill="none" stroke="#9aa6ff" stroke-width=".5"/>`; });
-  svg("m-sky", h);
-}
-{ // orbit
-  const pts = [[52, 23, 6, "#fff"], [20, 10, 4, "#8fa2ff"], [86, 12, 4.5, "#8fa2ff"], [16, 36, 3, "#7fd6c2"], [88, 36, 2.5, "#f2a6d8"], [52, 42, 2.5, "#f2a6d8"]];
-  let h = pts.slice(1).map(([x, y], i) => `<line x1="52" y1="23" x2="${x}" y2="${y}" stroke="#7c8cff" stroke-width="${[2.4, 2.1, .9, .7, .6][i]}" opacity=".7"/>`).join("");
-  h += pts.map(([x, y, r, c]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join("");
-  svg("m-orb", h);
-}
-{ // track
-  const checks = [{ lo: 96, hi: 165, actual: 141 }, { lo: 102, hi: 172, actual: 180 }, { lo: 104, hi: 176, actual: 152 }, { lo: 108, hi: 184, actual: 158 }];
-  let h = ""; checks.forEach((c, i) => { const y = 6 + i * 11, x = v => (v - 80) / 120 * 104, held = c.actual >= c.lo && c.actual <= c.hi;
-    h += `<rect x="${x(c.lo)}" y="${y - 3}" width="${x(c.hi) - x(c.lo)}" height="7" rx="2" fill="rgba(124,140,255,.3)"/><circle cx="${x(c.actual)}" cy="${y + .5}" r="2.6" fill="#fff"/>`; });
-  svg("m-trk", h);
-}
 
 window.__go = go;
 </script>

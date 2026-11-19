@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Terminal: Products command center v2 (mockup)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1"></script>
+<style>
+:root{--bg:#080812;--panel:#0f0f1c;--edge:#22223a;--line:rgba(255,255,255,.07);--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;
+  --red:#f87171;--amber:#fbbf24;--green:#34d399;--sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--sans);display:flex;overflow:hidden}
+button,input,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:0;text-align:left}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.chip{font-size:10px;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:0 5px;color:var(--muted);margin-left:6px;white-space:nowrap;text-transform:none;letter-spacing:0;font-weight:400}
+.untested{font-size:10px;border:1px solid rgba(251,191,36,.4);color:var(--amber);border-radius:4px;padding:0 4px;margin-left:5px}
+.new{font-size:10px;border:1px solid rgba(124,140,255,.5);color:#c3c9ff;border-radius:99px;padding:0 6px;margin-left:6px;text-transform:none;letter-spacing:0}
+nav{width:220px;flex:none;border-right:1px solid var(--edge);padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-weight:600;padding:0 8px 14px}nav a{display:block;padding:7px 10px;border-radius:7px;color:var(--muted)}nav a.on{background:rgba(124,140,255,.12);color:var(--text)}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crumbs{height:44px;flex:none;display:flex;align-items:center;padding:0 22px;border-bottom:1px solid var(--edge)}
+.mock{margin-left:auto;font-size:11px;color:var(--amber);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+.head{flex:none;padding:12px 22px 0}.head h1{font-size:20px;margin:0}.head p{margin:3px 0 10px;color:#c9c9d8;font-size:14px}
+.r{color:var(--red)}.a{color:var(--amber)}.g{color:var(--green)}
+/* insight cards */
+.cards{display:flex;gap:10px;padding:0 22px 10px;flex:none}
+.card{flex:1;min-width:0;height:100px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:var(--panel);padding:10px 13px;display:flex;flex-direction:column}
+.card:hover{border-color:rgba(124,140,255,.4)}
+.card .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;flex-wrap:wrap}
+.card .b{margin-top:auto;display:flex;align-items:flex-end;gap:10px}.card .big{font-family:var(--mono);font-size:28px;line-height:1}
+.card .l{font-size:12px;color:#c9c9d8;line-height:1.35;min-width:0}.card .l b{color:var(--text);font-weight:500}.card .l small{display:block;color:var(--muted);font-size:11px}
+.card.chg{flex:1.35;border-color:rgba(124,140,255,.35)}
+.chg .rows{margin-top:auto;display:grid;gap:3px}
+.chg .row{display:grid;grid-template-columns:1fr 70px 52px;gap:8px;align-items:center;font-size:12px}
+.chg .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.06);position:relative}.chg .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+/* body */
+.body{flex:1;min-height:0;display:flex;border-top:1px solid var(--edge)}
+.left{flex:1;min-width:0;display:flex;flex-direction:column}
+.tools{flex:none;display:flex;align-items:center;gap:8px;padding:10px 22px;border-bottom:1px solid var(--line)}
+.search{display:flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:8px;padding:5px 9px;width:190px;background:#0c0c18}
+.search input{background:none;border:0;outline:0;width:100%}
+.seg{display:flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+.seg button{white-space:nowrap;padding:5px 10px;color:var(--muted);font-size:12px}.seg button.on{background:rgba(124,140,255,.16);color:var(--text)}
+select{background:#0c0c18;border:1px solid var(--edge);border-radius:8px;padding:5px 8px;color:var(--muted)}
+.count{white-space:nowrap;margin-left:auto;color:var(--dim);font-size:12px}
+.list{flex:1;overflow:auto;padding:0 22px 20px}
+.lh,.pr{display:grid;grid-template-columns:14px minmax(170px,1fr) 96px 210px 150px 40px;gap:14px;align-items:center}
+.lh{position:sticky;top:0;background:var(--bg);font-size:10px;color:var(--muted);padding:8px 0 5px 8px;border-bottom:1px solid var(--edge);z-index:1}
+.pr{padding:7px 0 7px 8px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+.pr:hover,.pr.hov{background:rgba(255,255,255,.035)}.pr.sel{background:rgba(124,140,255,.09);box-shadow:inset 2px 0 0 var(--accent)}
+.dot{width:9px;height:9px;border-radius:50%}
+.pr .t b{font-weight:500}.pr .t div{font-size:11px;color:var(--muted)}
+.rc{display:inline-flex;align-items:center;gap:5px;border:1px solid;border-radius:99px;padding:1px 8px;font-size:11px;white-space:nowrap}
+.open{font-size:11px;border:1px solid var(--edge);border-radius:6px;padding:1px 6px;color:var(--muted);justify-self:end}
+/* right column */
+.right{width:440px;flex:none;border-left:1px solid var(--edge);background:var(--panel);display:flex;flex-direction:column}
+.ph{height:36px;flex:none;display:flex;align-items:center;padding:0 14px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line)}
+.ph .sub{margin-left:auto;text-transform:none;letter-spacing:0;color:var(--dim)}
+.stage{position:relative;flex:1;min-height:0;background:radial-gradient(75% 75% at 50% 42%,#121427 0%,#0a0a14 55%,#05050b 100%);overflow:hidden}
+#gal,#sky{position:absolute;inset:0}
+.lab{position:absolute;z-index:2;font-size:11px;text-shadow:0 1px 3px #000;color:var(--muted);pointer-events:none;white-space:nowrap;transform:translate(-100%,-50%);padding-right:6px}
+.lab.on{color:#fff;font-weight:600}
+.tip{position:absolute;z-index:4;display:none;padding:7px 10px;border:1px solid var(--edge);border-radius:9px;background:rgba(15,15,28,.95);font-size:11px;pointer-events:none;min-width:170px}
+.tip b{font-weight:500}.tip .m{color:var(--muted)}
+.back{position:absolute;left:10px;top:8px;z-index:3;font-size:11px;border:1px solid var(--edge);border-radius:6px;padding:2px 8px;background:rgba(12,12,22,.85);color:var(--muted);display:none}
+.hint{position:absolute;right:10px;bottom:8px;z-index:2;font-size:10px;color:var(--dim);pointer-events:none}
+</style>
+</head>
+<body>
+<nav><div class="brand">The Terminal</div><a>Command</a><a class="on">Products</a><a>Customers</a><a>Ads</a><a>Support</a><a>Money</a><a>Connections</a></nav>
+<main>
+  <div class="crumbs">Products<span class="mock">Mockup · made-up demo data</span></div>
+  <div class="head"><h1>Products</h1>
+    <p>In the next 14 days, sell-out risk is <span class="r">high for 1</span>, <span class="a">medium for 3</span> and <span class="g">low for 12</span> products.<span class="untested">untested</span></p></div>
+  <div class="cards" id="cards"></div>
+  <div class="body">
+    <section class="left">
+      <div class="tools">
+        <label class="search">⌕<input id="q" placeholder="Search products" aria-label="Search products"></label>
+        <div class="seg" id="sort" role="group" aria-label="Sort">
+          <button data-s="runout" class="on">Runs out first</button><button data-s="sold">Sells most</button><button data-s="miss">Kumo missed</button>
+        </div>
+        <select id="type" aria-label="Product type"><option value="">All types</option></select>
+        <span class="new">new</span>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="list" id="list"></div>
+    </section>
+    <aside class="right">
+      <div class="ph">Bought together<span class="chip">Shopify</span><span class="sub">hover a row to find it here</span></div>
+      <div class="stage" style="flex:1"><div id="gal"></div><div class="tip" id="gtip"></div></div>
+      <div class="ph">Shop skyline<span class="chip">Shopify</span><span class="chip">Kumo</span><span class="new">new</span><span class="sub" id="skysub">top 8 sellers · click a row</span></div>
+      <div class="stage" style="flex:1" id="skystage"><div id="sky"></div><button class="back" id="back">← all products</button><div class="tip" id="stip"></div><div class="hint">solid = sold · glass = Kumo's likely range</div></div>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+/* ---------- made-up demo shop (same products as the demo API) ---------- */
+let s = 11; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+const COLORS = { Shirts: "#8fa2ff", Bags: "#7fd6c2", Accessories: "#f2a6d8", Outerwear: "#9fd0ff", Knitwear: "#f5c97a", Art: "#fda4af" };
+const P = [["Canvas Tote","Bags",40,110,150,190],["Cotton Tee","Shirts",181,120,158,205],["Linen Shirt","Shirts",179,96,128,164],["Knit Beanie","Knitwear",53,33,47,66],
+ ["Card Holder","Accessories",71,38,55,77],["Oxford Shirt","Shirts",120,42,60,84],["Merino Crew","Knitwear",98,30,44,63],["Market Bag","Bags",86,30,41,58],
+ ["Wool Scarf","Accessories",60,25,37,52],["Denim Jacket","Outerwear",210,22,31,45],["Bucket Hat","Accessories",146,19,28,40],["Leather Belt","Accessories",164,18,25,37],
+ ["Rain Shell","Outerwear",88,14,21,31],["Silk Tie","Accessories",70,12,18,27],["Poster Set","Art",40,6,10,16],["Limited Print","Art",4,null,null,null]];
+const today = new Date(); today.setHours(12);
+const dn = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
+const wk = n => { const w = ((today.getDay() + n) % 7 + 7) % 7; return w === 0 || w === 6 ? 1.4 : w === 5 ? 1.15 : .85; };
+const prods = P.map(([title, type, stock, lo, mid, hi], id) => {
+  const per = (mid ?? 2) / 14;
+  const trend = [2, 8].includes(id) ? .5 : [6].includes(id) ? -.45 : 0; // a few products changed this week
+  const past = Array.from({ length: 28 }, (_, i) => Math.max(0, Math.round(per * wk(i - 28) * (.6 + rnd() * .8) * (i >= 21 ? 1 + trend : 1))));
+  const f = lo === null ? null : { lo, mid, hi };
+  let out = null; if (f) { let st = stock; for (let k = 1; k <= 14; k++) { st -= f.hi / 14; if (st <= 0) { out = { e: k }; break; } } }
+  if (out) { let st = stock; out.l = null; for (let k = 1; k <= 14; k++) { st -= f.mid / 14; if (st <= 0 && out.l === null) out.l = k; } }
+  const band = !f ? null : f.mid >= stock ? "high" : f.hi >= stock ? "medium" : "low";
+  const check = f ? { lo: Math.round(lo * .95), hi: Math.round(hi * .95), actual: Math.round(mid * (id === 8 ? 1.5 : id === 3 ? 1.3 : id === 2 ? .7 : id === 14 ? .55 : .9 + rnd() * .2)) } : null;
+  if (check) check.res = check.actual > check.hi ? "above" : check.actual < check.lo ? "below" : "inside";
+  const thisWeek = past.slice(21).reduce((a, b) => a + b, 0), usual = past.slice(0, 21).reduce((a, b) => a + b, 0) / 3;
+  return { id, title, type, stock, f, out, band, check, past, sold14: past.slice(14).reduce((a, b) => a + b, 0), thisWeek, usual };
+});
+const RISK = { high: "#f87171", medium: "#fbbf24", low: "#34d399" };
+const pairs = [[0,2,83],[0,1,74],[3,6,40],[1,9,37],[13,5,35],[2,11,26],[4,0,22],[10,12,18],[7,0,16],[14,15,9],[8,3,14],[5,2,12],[11,4,8],[6,8,7],[12,9,6]];
+
+/* ---------- top cards ---------- */
+const held = prods.filter(p => p.check?.res === "inside").length, checked = prods.filter(p => p.check).length;
+const above = prods.filter(p => p.check?.res === "above"), below = prods.filter(p => p.check?.res === "below");
+const atRisk = prods.filter(p => p.out).sort((a, b) => a.out.e - b.out.e);
+const changed = prods.filter(p => p.usual >= 3).map(p => ({ p, d: p.thisWeek / p.usual })).sort((a, b) => Math.abs(Math.log(b.d)) - Math.abs(Math.log(a.d))).slice(0, 3);
+document.getElementById("cards").innerHTML = `
+ <div class="card"><div class="k">Track record<span class="chip">Kumo</span><span class="chip">Shopify</span></div><div class="b"><span class="big">${held}</span><div class="l">of ${checked} held<small>${dn(-28)} – ${dn(-14)}</small></div></div></div>
+ <div class="card"><div class="k">Sold more than Kumo expected<span class="chip">Kumo</span></div><div class="b"><span class="big">${above.length}</span><div class="l"><b>${above[0].title}</b><small>sold ${above[0].check.actual}, range ${above[0].check.lo}–${above[0].check.hi}</small></div></div></div>
+ <div class="card"><div class="k">Sold less than Kumo expected<span class="chip">Kumo</span></div><div class="b"><span class="big">${below.length}</span><div class="l"><b>${below[0].title}</b><small>sold ${below[0].check.actual}, range ${below[0].check.lo}–${below[0].check.hi}</small></div></div></div>
+ <div class="card"><div class="k">Could run out<span class="chip">Our math</span><span class="untested">untested</span></div><div class="b"><span class="big">${atRisk.length}</span><div class="l"><b>${atRisk[0].title}</b><small class="r">could run out day ${atRisk[0].out.e}–${atRisk[0].out.l ?? "14+"}</small></div></div></div>
+ <div class="card chg"><div class="k">What changed this week<span class="chip">Shopify</span><span class="new">new</span></div><div class="rows">
+  ${changed.map(({ p, d }) => { const up = d > 1, w = Math.min(100, Math.abs(d - 1) * 100);
+    return `<div class="row"><span>${p.title}</span><span class="bar"><i style="${up ? "left:50%" : "right:50%"};width:${w / 2}%;background:${up ? "#9db6ff" : "#5b6390"}"></i></span>
+      <span class="num" style="text-align:right;color:${up ? "#c3c9ff" : "var(--muted)"}">${up ? "busier" : "quieter"}</span></div>`; }).join("")}
+  <span style="font-size:10px;color:var(--dim)">last 7 days against the 3 weeks before, exact sales</span></div></div>`;
+
+/* ---------- list ---------- */
+const typeSel = document.getElementById("type");
+Object.keys(COLORS).forEach(t => typeSel.insertAdjacentHTML("beforeend", `<option>${t}</option>`));
+let sort = "runout", q = "", type = "", selected = null, hovered = null;
+const spark = v => { const m = Math.max(1, ...v); return `<svg width="96" height="24">${v.map((x, i) => `<rect x="${i * 3.4}" y="${23 - x / m * 21}" width="2.4" height="${x / m * 21}" fill="rgba(231,231,240,.38)"/>`).join("")}</svg>`; };
+const band = p => { if (!p.f) return `<span style="font-size:11px;color:var(--muted);font-style:italic">too few sales to predict</span>`;
+  const m = Math.max(p.stock, p.f.hi) * 1.08, W = 210, x = v => v / m * W, c = RISK[p.band];
+  return `<svg width="${W}" height="28"><rect x="0" y="12" width="${x(p.stock)}" height="4" rx="2" fill="rgba(255,255,255,.2)"/>
+   <rect x="${x(p.f.lo)}" y="5" width="${x(p.f.hi) - x(p.f.lo)}" height="18" rx="4" fill="${c}" fill-opacity=".22" stroke="${c}" stroke-opacity=".8"/>
+   <line x1="${x(p.f.mid)}" x2="${x(p.f.mid)}" y1="5" y2="23" stroke="${c}" stroke-width="2"/><line x1="${x(p.stock)}" x2="${x(p.stock)}" y1="3" y2="25" stroke="#e7e7f0" stroke-width="2"/></svg>`; };
+const chip = p => { if (!p.f) return ""; if (!p.out) return `<span class="rc" style="border-color:#34d39955;color:var(--muted)">● lasts past day 14</span>`;
+  const c = RISK[p.band]; return `<span class="rc" style="border-color:${c}55;color:${c};background:${c}14">● could run out day ${p.out.e}${p.out.l ? "–" + p.out.l : "+"}</span>`; };
+function rows() {
+  let r = prods.filter(p => (!q || p.title.toLowerCase().includes(q)) && (!type || p.type === type));
+  const key = { runout: p => p.out ? p.out.e : p.f ? 50 : 99, sold: p => -p.sold14, miss: p => p.check ? (p.check.res === "inside" ? 1 : 0) : 2, name: () => 0 }[sort];
+  r.sort((a, b) => key(a) - key(b) || a.title.localeCompare(b.title));
+  document.getElementById("count").textContent = `${r.length} of ${prods.length} products`;
+  document.getElementById("list").innerHTML = `<div class="lh"><span></span><span>Product</span><span>Sold per day, 28 days<span class="chip">Shopify</span></span><span>Stock | against likely sold in 14 days<span class="chip">Kumo</span></span><span>Could run out<span class="untested">untested</span></span><span></span></div>` +
+   r.map(p => `<div class="pr ${p.id === selected ? "sel" : ""} ${p.id === hovered ? "hov" : ""}" data-id="${p.id}"><span class="dot" style="background:${COLORS[p.type]}" title="${p.type}"></span>
+     <div class="t"><b>${p.title}</b><div><span class="num">${p.stock}</span> in stock · sold <span class="num">${p.sold14}</span> in 14 days</div>${p.f ? `<div>likely sells <span class="num" style="color:var(--text)">${p.f.lo}–${p.f.hi}</span> next 14 days</div>` : ""}</div>
+     ${spark(p.past)}${band(p)}<span>${chip(p)}</span><span class="open">Open</span></div>`).join("");
+  document.querySelectorAll(".pr").forEach(el => {
+    const id = +el.dataset.id;
+    el.onmouseenter = () => setHover(id, "list"); el.onmouseleave = () => setHover(null, "list");
+    el.onclick = () => select(id);
+  });
+}
+document.getElementById("q").oninput = e => { q = e.target.value.trim().toLowerCase(); rows(); const m = prods.filter(p => p.title.toLowerCase().includes(q)); if (q && m.length === 1) select(m[0].id); };
+typeSel.onchange = e => { type = e.target.value; rows(); paintGalaxy(); };
+document.querySelectorAll("#sort button").forEach(b => b.onclick = () => { sort = b.dataset.s; document.querySelectorAll("#sort button").forEach(x => x.classList.toggle("on", x === b)); rows(); });
+
+/* ---------- galaxy ---------- */
+const gEl = document.getElementById("gal"), gTip = document.getElementById("gtip");
+const nodes = prods.map(p => ({ id: p.id, p })), links = pairs.map(([a, b, o]) => ({ source: a, target: b, o }));
+const near = id => new Set([id, ...pairs.filter(l => l[0] === id || l[1] === id).flatMap(l => [l[0], l[1]])]);
+const G = ForceGraph3D()(gEl).backgroundColor("rgba(0,0,0,0)").showNavInfo(false).width(gEl.clientWidth).height(gEl.clientHeight)
+  .graphData({ nodes, links }).nodeRelSize(3).nodeVal(n => 1 + n.p.sold14 / 25).nodeLabel(() => "")
+  .linkWidth(l => .3 + l.o / 30).linkOpacity(.85).cooldownTime(2500)
+  .onNodeHover(n => { setHover(n ? n.id : null, "galaxy"); gEl.style.cursor = n ? "pointer" : "grab"; })
+  .onNodeClick(n => select(n.id)).onBackgroundClick(() => select(null));
+G.controls().autoRotate = true; G.controls().autoRotateSpeed = .5;
+G.d3Force("charge").strength(-70);
+setTimeout(() => G.zoomToFit(600, 10), 2700); setTimeout(() => G.zoomToFit(600, 10), 4500);
+function paintGalaxy() {
+  const focus = hovered ?? selected, lit = focus === null ? null : near(focus);
+  G.nodeColor(n => n.id === focus ? "#ffffff" : type && n.p.type !== type ? "#22223a" : lit && !lit.has(n.id) ? "#2a2a44" : COLORS[n.p.type])
+   .linkColor(l => { const a = l.source.id ?? l.source, b = l.target.id ?? l.target; return focus !== null && (a === focus || b === focus) ? "#7c8cff" : focus !== null ? "#1d1d33" : "rgba(231,231,240,.22)"; })
+   .linkDirectionalParticles(l => { const a = l.source.id ?? l.source, b = l.target.id ?? l.target; return focus !== null && (a === focus || b === focus) ? 2 : 0; })
+   .linkDirectionalParticleWidth(1.6);
+}
+paintGalaxy();
+// tooltip follows the hovered node
+(function tipLoop() {
+  const id = hovered ?? selected;
+  if (id !== null) { const n = nodes[id]; if (n.x !== undefined) { const c = G.graph2ScreenCoords(n.x, n.y, n.z); const p = n.p;
+    const w = pairs.filter(l => l[0] === id || l[1] === id).sort((a, b) => b[2] - a[2])[0];
+    gTip.style.display = "block"; gTip.style.left = Math.min(gEl.clientWidth - 190, c.x + 14) + "px"; gTip.style.top = Math.max(6, c.y - 30) + "px";
+    gTip.innerHTML = `<b>${p.title}</b><div class="m">${p.stock} in stock · ${p.f ? `likely ${p.f.lo}–${p.f.hi}` : "too few sales"}</div>${w ? `<div class="m">most with <b style="color:var(--text)">${prods[w[0] === id ? w[1] : w[0]].title}</b> (${w[2]} orders)</div>` : ""}`; } }
+  else gTip.style.display = "none";
+  requestAnimationFrame(tipLoop);
+})();
+
+/* ---------- shop skyline (three.js) ---------- */
+const THREE = await import("https://esm.sh/three@0.170.0");
+const { OrbitControls } = await import("https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js");
+const sEl = document.getElementById("sky"), stage = document.getElementById("skystage"), sTip = document.getElementById("stip");
+const R = new THREE.WebGLRenderer({ antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, devicePixelRatio)); sEl.appendChild(R.domElement);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x0b0b15, 90, 200);
+const cam = new THREE.PerspectiveCamera(34, 1, .1, 500);
+const ctl = new OrbitControls(cam, R.domElement); ctl.enableDamping = true; ctl.autoRotate = false; ctl.enablePan = false;
+ctl.minPolarAngle = .14; ctl.maxPolarAngle = 1.3;
+scene.add(new THREE.AmbientLight(0xffffff, .55)); const kl = new THREE.DirectionalLight(0xffffff, 1.1); kl.position.set(-30, 60, 40); scene.add(kl);
+const rl = new THREE.DirectionalLight(0x7c8cff, .9); rl.position.set(40, 20, -40); scene.add(rl);
+// spotlight floor, like the approved galaxy
+const cv = document.createElement("canvas"); cv.width = cv.height = 512; const g2 = cv.getContext("2d"); const gr = g2.createRadialGradient(256, 256, 0, 256, 256, 256);
+[[0, "rgba(150,158,230,.24)"], [.42, "rgba(110,118,190,.10)"], [1, "rgba(0,0,0,0)"]].forEach(([o, c]) => gr.addColorStop(o, c)); g2.fillStyle = gr; g2.fillRect(0, 0, 512, 512);
+const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, fog: false }));
+floor.rotation.x = -Math.PI / 2; floor.scale.set(90, 70, 1); floor.renderOrder = -1; scene.add(floor);
+const TOP = prods.filter(p => p.f).sort((a, b) => b.sold14 - a.sold14).slice(0, 8);
+const STEP = 1, GAP = 4.2, box = new THREE.BoxGeometry(.78, 1, 2.2);
+const xOf = i => (i - 21) * STEP, zOf = r => (r - (TOP.length - 1) / 2) * GAP;
+const maxDay = Math.max(...TOP.flatMap(p => [...p.past, p.f.hi / 14]));
+const H = 9 / maxDay;
+const meshes = [], info = [];
+TOP.forEach((p, r) => {
+  p.past.forEach((u, i) => { const m = new THREE.Mesh(box, new THREE.MeshStandardMaterial({ color: 0xc9cbe0, roughness: .55, transparent: true })); const h = Math.max(.05, u * H);
+    m.scale.y = h; m.position.set(xOf(i), h / 2, zOf(r)); scene.add(m); meshes.push(m); info.push({ r, kind: "past", i, u }); });
+  let st = p.stock;
+  for (let k = 1; k <= 14; k++) { st -= p.f.mid / 14; const gone = st <= 0;
+    const m = new THREE.Mesh(box, new THREE.MeshPhysicalMaterial({ color: gone ? 0xf87171 : 0x7c8cff, transparent: true, opacity: gone ? .3 : .5, roughness: .15, emissive: gone ? 0x2a0b0b : 0x1c2266 }));
+    const h = Math.max(.05, p.f.mid / 14 * H); m.scale.y = h; m.position.set(xOf(27 + k), h / 2, zOf(r)); scene.add(m); meshes.push(m); info.push({ r, kind: "ahead", k, gone });
+    const cap = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.78, p.f.hi / 14 * H, 2.2)), new THREE.LineBasicMaterial({ color: 0x9aa6ff, transparent: true, opacity: .7 }));
+    cap.position.set(xOf(27 + k), p.f.hi / 14 * H / 2, zOf(r)); scene.add(cap); m.userData.cap = cap; }
+});
+const tp = new THREE.Mesh(new THREE.PlaneGeometry(GAP * TOP.length + 2, 12), new THREE.MeshBasicMaterial({ color: 0x7c8cff, transparent: true, opacity: .07, side: THREE.DoubleSide, depthWrite: false }));
+tp.rotation.y = Math.PI / 2; tp.position.set((xOf(27) + xOf(28)) / 2, 6, 0); scene.add(tp);
+const labs = TOP.map(p => { const d = document.createElement("div"); d.className = "lab"; d.textContent = p.title; stage.appendChild(d); return d; });
+const home = { t: new THREE.Vector3(1, 1, 0), p: new THREE.Vector3(-14, 70, 58) };
+cam.position.copy(home.p); ctl.target.copy(home.t);
+let fly = null, skyRow = null;
+function size() { const w = sEl.clientWidth, h = sEl.clientHeight; R.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); G.width(gEl.clientWidth).height(gEl.clientHeight); }
+new ResizeObserver(size).observe(stage); size();
+function focusRow(r) {
+  skyRow = r; document.getElementById("back").style.display = r === null ? "none" : "block";
+  document.getElementById("skysub").textContent = r === null ? "top 8 sellers · click a row" : TOP[r].title;
+  ctl.autoRotate = false;
+  fly = r === null ? { ...home } : { t: new THREE.Vector3(3, 2, zOf(r)), p: new THREE.Vector3(-26, 20, zOf(r) + 34) };
+}
+document.getElementById("back").onclick = () => select(null);
+// picking
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const hit = e => { const b = R.domElement.getBoundingClientRect(); ptr.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(ptr, cam); const h = ray.intersectObjects(meshes)[0]; return h ? meshes.indexOf(h.object) : -1; };
+let down = null, skyHover = -1;
+R.domElement.onpointerdown = e => down = [e.clientX, e.clientY];
+R.domElement.onpointerup = e => { if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return; const i = hit(e); if (i >= 0) select(TOP[info[i].r].id); };
+R.domElement.onpointermove = e => { const i = hit(e); skyHover = i; R.domElement.style.cursor = i >= 0 ? "pointer" : "grab";
+  if (i >= 0) { const x = info[i], p = TOP[x.r]; const b = stage.getBoundingClientRect();
+    sTip.style.display = "block"; sTip.style.left = Math.min(b.width - 190, e.clientX - b.left + 12) + "px"; sTip.style.top = Math.max(6, e.clientY - b.top - 50) + "px";
+    sTip.innerHTML = x.kind === "past" ? `<b>${p.title}</b> · ${dn(x.i - 28)}<div class="m"><span class="num" style="color:var(--text)">${x.u}</span> sold<span class="chip">Shopify</span></div>`
+      : `<b>${p.title}</b> · ${dn(x.k)}<div class="m">likely <span class="num" style="color:var(--text)">${Math.floor(p.f.lo / 14)}–${Math.ceil(p.f.hi / 14)}</span><span class="chip">Kumo</span></div>${x.gone ? `<div class="r">stock likely gone by then</div>` : ""}`;
+  } else sTip.style.display = "none"; };
+R.domElement.onpointerleave = () => { sTip.style.display = "none"; skyHover = -1; };
+const v = new THREE.Vector3();
+(function loop() {
+  const focus = hovered ?? selected, fr = focus === null ? null : TOP.findIndex(p => p.id === focus);
+  meshes.forEach((m, i) => { const x = info[i], dim = fr !== null && fr >= 0 && x.r !== fr;
+    m.material.opacity = dim ? .12 : x.kind === "past" ? 1 : x.gone ? .3 : .5; if (m.userData.cap) m.userData.cap.material.opacity = dim ? .12 : .7;
+    if (m.material.emissive && x.kind === "past") m.material.emissive.setHex(i === skyHover ? 0x3a3c5a : 0); });
+  labs.forEach((l, r) => { v.set(xOf(0) - 1, .3, zOf(r)).project(cam); l.style.left = (v.x + 1) / 2 * sEl.clientWidth + "px"; l.style.top = (1 - v.y) / 2 * sEl.clientHeight + "px";
+    l.classList.toggle("on", r === fr); l.style.opacity = fr !== null && fr >= 0 && r !== fr ? .35 : 1; });
+  if (fly) { ctl.target.lerp(fly.t, .07); cam.position.lerp(fly.p, .07); if (cam.position.distanceTo(fly.p) < .1) fly = null; }
+  ctl.update(); R.render(scene, cam); requestAnimationFrame(loop);
+})();
+
+/* ---------- linking: list ↔ galaxy ↔ skyline ---------- */
+function setHover(id, from) {
+  if (hovered === id) return; hovered = id;
+  document.querySelectorAll(".pr").forEach(el => el.classList.toggle("hov", +el.dataset.id === id));
+  if (from === "galaxy" && id !== null) document.querySelector(`.pr[data-id="${id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  paintGalaxy();
+}
+function select(id) {
+  selected = id; rows(); paintGalaxy();
+  const r = id === null ? -1 : TOP.findIndex(p => p.id === id);
+  focusRow(r >= 0 ? r : null);
+  if (r < 0 && id !== null) document.getElementById("skysub").textContent = `${prods[id].title} is not in the top 8 · showing the shop`;
+}
+rows();
+window.__sel = select;
+</script>
+</body>
+</html>

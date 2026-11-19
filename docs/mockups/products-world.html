@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Terminal: Products command center, one world (mockup)</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080812;--panel:#0f0f1c;--edge:#22223a;--line:rgba(255,255,255,.07);--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;
+  --red:#f87171;--amber:#fbbf24;--green:#34d399;--sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--sans);display:flex;overflow:hidden}
+button,input,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:0;text-align:left}
+.untested{font-size:10px;border:1px solid rgba(251,191,36,.4);color:var(--amber);border-radius:4px;padding:0 4px;margin-left:5px}
+nav{width:200px;flex:none;border-right:1px solid var(--edge);padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-weight:600;padding:0 8px 14px}nav a{display:block;padding:7px 10px;border-radius:7px;color:var(--muted)}nav a.on{background:rgba(124,140,255,.12);color:var(--text)}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crumbs{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 20px;border-bottom:1px solid var(--edge);color:var(--muted)}
+.crumbs b{color:var(--text);font-weight:500}
+.mock{margin-left:auto;font-size:11px;color:var(--amber);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+.stage{position:relative;flex:1;min-height:0;background:radial-gradient(75% 75% at 50% 42%,#121427 0%,#0a0a14 55%,#05050b 100%);overflow:hidden}
+#world{position:absolute;inset:0}
+.top{position:absolute;left:16px;right:16px;top:14px;z-index:3;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.top h1{font-size:18px;margin:0 10px 0 0}
+.search{display:flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:8px;padding:5px 9px;width:200px;background:rgba(12,12,24,.85)}
+.search input{background:none;border:0;outline:0;width:100%}
+.seg{display:flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden;background:rgba(12,12,24,.85)}
+.seg button{white-space:nowrap;padding:5px 10px;color:var(--muted);font-size:12px}.seg button.on{background:rgba(124,140,255,.16);color:var(--text)}
+select{background:rgba(12,12,24,.85);border:1px solid var(--edge);border-radius:8px;padding:5px 8px;color:var(--muted)}
+.count{color:var(--dim);font-size:12px;white-space:nowrap}
+.answer{position:absolute;left:16px;top:52px;z-index:3;color:#c9c9d8;font-size:13px;pointer-events:none;transition:opacity .3s}
+.answer .r{color:var(--red)}.answer .a{color:var(--amber)}.answer .g{color:var(--green)}
+.back{position:absolute;left:16px;top:52px;z-index:4;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(124,140,255,.5);border-radius:9px;background:rgba(20,20,42,.9);font-size:13px;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .3s,transform .3s}
+.back.on{opacity:1;pointer-events:auto;transform:none}.back kbd{font:11px var(--mono);color:var(--muted);border:1px solid var(--edge);border-radius:4px;padding:0 5px}
+.modes{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:3;padding:6px;border:1px solid var(--edge);border-radius:12px;background:rgba(12,12,22,.86)}
+.mrow{display:flex;align-items:center;gap:8px}
+.step{width:30px;height:30px;flex:none;border-radius:50%;border:1px solid var(--edge);background:#14142a;color:var(--text);font-size:15px;text-align:center}
+.step:hover:not(:disabled){border-color:var(--accent)}.step:disabled{opacity:.3;cursor:default}
+.stops{display:flex;gap:4px}
+.stops button{font-size:13px;color:var(--muted);padding:6px 14px;border-radius:8px;transition:background .25s,color .25s}.stops button.on{color:var(--text);background:rgba(124,140,255,.16)}
+.stops button small{color:var(--dim);margin-left:4px}
+.hint{position:absolute;right:16px;bottom:24px;z-index:2;font-size:11px;color:var(--dim);pointer-events:none;text-align:right}
+.tip{position:absolute;z-index:5;display:none;padding:7px 10px;border:1px solid var(--edge);border-radius:9px;background:rgba(15,15,28,.95);font-size:12px;pointer-events:none;white-space:nowrap}
+.tip b{font-weight:500}.tip .m{color:var(--muted);font-size:11px}
+</style>
+</head>
+<body>
+<nav><div class="brand">The Terminal</div><a>Command</a><a class="on">Products</a><a>Customers</a><a>Ads</a><a>Support</a><a>Money</a><a>Connections</a></nav>
+<main>
+  <div class="crumbs">Products<span id="crumb"></span><span class="mock">Mockup · made-up demo data</span></div>
+  <section class="stage" id="stage">
+    <div id="world"></div>
+    <div class="top">
+      <h1>Products</h1>
+      <label class="search">⌕<input id="q" placeholder="Search products" aria-label="Search products"></label>
+      <div class="seg" id="sort" role="group" aria-label="Sort"><button data-s="runout" class="on">Runs out first</button><button data-s="sold">Sells most</button><button data-s="miss">Kumo missed</button></div>
+      <select id="type" aria-label="Product type"><option value="">All types</option></select>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="answer" id="answer">In the next 14 days, sell-out risk is <span class="r">high for 1</span>, <span class="a">medium for 3</span> and <span class="g">low for 12</span> products.<span class="untested">untested</span></div>
+    <button class="back" id="back">← Back to all products <kbd>Esc</kbd></button>
+    <div class="tip" id="tip"></div>
+    <div class="hint" id="hint"></div>
+    <div class="modes">
+      <div class="mrow"><button class="step" id="prev" aria-label="Previous view">‹</button>
+        <div class="stops"><button data-m="0" class="on">Galaxy<small>bought together</small></button><button data-m="1">Skyline<small>sales per day</small></button><button data-m="2">Cards<small>3D list</small></button></div>
+        <button class="step" id="next" aria-label="Next view">›</button></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+const THREE = await import("https://esm.sh/three@0.170.0");
+const { OrbitControls } = await import("https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js");
+const PRODUCT_PAGE = "product-stage.html"; // the approved product page mockup
+
+/* ---------------- made-up demo shop ---------------- */
+let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+const COLORS = { Shirts: "#8fa2ff", Bags: "#7fd6c2", Accessories: "#f2a6d8", Outerwear: "#9fd0ff", Knitwear: "#f5c97a", Art: "#fda4af" };
+const P = [["Canvas Tote","Bags",40,110,150,190],["Cotton Tee","Shirts",181,120,158,205],["Linen Shirt","Shirts",179,96,128,164],["Knit Beanie","Knitwear",53,33,47,66],
+ ["Card Holder","Accessories",71,38,55,77],["Oxford Shirt","Shirts",120,42,60,84],["Merino Crew","Knitwear",98,30,44,63],["Market Bag","Bags",86,30,41,58],
+ ["Wool Scarf","Accessories",60,25,37,52],["Denim Jacket","Outerwear",210,22,31,45],["Bucket Hat","Accessories",146,19,28,40],["Leather Belt","Accessories",164,18,25,37],
+ ["Rain Shell","Outerwear",88,14,21,31],["Silk Tie","Accessories",70,12,18,27],["Poster Set","Art",40,6,10,16],["Limited Print","Art",4,null,null,null]];
+const today = new Date(); today.setHours(12);
+const dn = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
+const wk = n => { const w = ((today.getDay() + n) % 7 + 7) % 7; return w === 0 || w === 6 ? 1.4 : w === 5 ? 1.15 : .85; };
+const RISK = { high: "#f87171", medium: "#fbbf24", low: "#34d399" };
+const prods = P.map(([title, type, stock, lo, mid, hi], id) => {
+  const per = (mid ?? 2) / 14, trend = id === 2 || id === 8 ? .5 : id === 6 ? -.45 : 0;
+  const past = Array.from({ length: 28 }, (_, i) => Math.max(0, Math.round(per * wk(i - 28) * (.6 + rnd() * .8) * (i >= 21 ? 1 + trend : 1))));
+  const f = lo === null ? null : { lo, mid, hi };
+  let out = null;
+  if (f) { let a = stock, b = stock, e = null, l = null; for (let k = 1; k <= 14; k++) { a -= hi / 14; b -= mid / 14; if (a <= 0 && e === null) e = k; if (b <= 0 && l === null) l = k; } if (e) out = { e, l }; }
+  const band = !f ? null : mid >= stock ? "high" : hi >= stock ? "medium" : "low";
+  const check = f ? { lo: Math.round(lo * .95), hi: Math.round(hi * .95), actual: Math.round(mid * (id === 8 ? 1.5 : id === 3 ? 1.3 : id === 2 ? .7 : id === 14 ? .55 : .9 + rnd() * .2)) } : null;
+  if (check) check.res = check.actual > check.hi ? "above" : check.actual < check.lo ? "below" : "inside";
+  return { id, title, type, stock, f, out, band, check, past, sold14: past.slice(14).reduce((a, b) => a + b, 0) };
+});
+const pairs = [[0,2,83],[0,1,74],[3,6,40],[1,9,37],[13,5,35],[2,11,26],[4,0,22],[10,12,18],[7,0,16],[14,15,9],[8,3,14],[5,2,12],[11,4,8],[6,8,7],[12,9,6]];
+const N = prods.length, maxOrders = Math.max(...pairs.map(l => l[2]));
+const partners = id => pairs.filter(l => l[0] === id || l[1] === id).map(l => ({ id: l[0] === id ? l[1] : l[0], o: l[2] })).sort((a, b) => b.o - a.o);
+
+/* ---------------- state ---------------- */
+let q = "", type = "", sort = "runout", selected = null, hovered = null, hoverTower = null, mode = 0, modeTarget = null, dragging = null, focus = 0;
+const matches = p => (!q || p.title.toLowerCase().includes(q)) && (!type || p.type === type);
+const order = () => { const key = { runout: p => p.out ? p.out.e : p.f ? 50 : 99, sold: p => -p.sold14, miss: p => p.check ? (p.check.res === "inside" ? 1 : 0) : 2 }[sort];
+  return [...prods].sort((a, b) => (matches(b) - matches(a)) || key(a) - key(b) || a.title.localeCompare(b.title)).map(p => p.id); };
+let rank = order();
+
+/* ---------------- world ---------------- */
+const host = document.getElementById("world"), stage = document.getElementById("stage");
+const R = new THREE.WebGLRenderer({ antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, devicePixelRatio)); host.appendChild(R.domElement);
+const scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x0b0b15, 120, 280);
+const cam = new THREE.PerspectiveCamera(38, 1, .1, 800);
+const ctl = new OrbitControls(cam, R.domElement); ctl.enableDamping = true; ctl.enablePan = false; ctl.autoRotateSpeed = .35;
+scene.add(new THREE.AmbientLight(0xffffff, .6));
+const kl = new THREE.DirectionalLight(0xffffff, 1.1); kl.position.set(-30, 60, 40); scene.add(kl);
+const rl = new THREE.DirectionalLight(0x7c8cff, .9); rl.position.set(40, 20, -40); scene.add(rl);
+const canvasTex = c => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+const mkCanvas = (w, h, draw) => { const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h); return c; };
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, fog: false,
+  map: canvasTex(mkCanvas(512, 512, (g, w) => { const q = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); [[0, "rgba(150,158,230,.24)"], [.42, "rgba(110,118,190,.10)"], [1, "rgba(0,0,0,0)"]].forEach(([o, c]) => q.addColorStop(o, c)); g.fillStyle = q; g.fillRect(0, 0, w, w); })) }));
+floor.rotation.x = -Math.PI / 2; floor.scale.set(140, 110, 1); floor.position.y = -.02; floor.renderOrder = -1; scene.add(floor);
+
+/* text in the world: a sprite with a canvas label (moves with its object, no screen jitter) */
+function textSprite(text, { size = 40, color = "#e7e7f0", weight = 500, bg = null } = {}) {
+  const pad = bg ? 18 : 6, c0 = document.createElement("canvas").getContext("2d"); c0.font = `${weight} ${size}px IBM Plex Sans, sans-serif`;
+  const w = Math.ceil(c0.measureText(text).width) + pad * 2, h = Math.ceil(size * 1.5);
+  const c = mkCanvas(w, h, g => { if (bg) { g.fillStyle = bg; g.beginPath(); g.roundRect(0, 0, w, h, h / 2); g.fill(); } g.font = `${weight} ${size}px IBM Plex Sans, sans-serif`; g.fillStyle = color; g.textBaseline = "middle"; g.shadowColor = "#000"; g.shadowBlur = bg ? 0 : 6; g.fillText(text, pad, h / 2); });
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: canvasTex(c), transparent: true, depthWrite: false, depthTest: false }));
+  s.userData.aspect = w / h; s.renderOrder = 6; scene.add(s); return s;
+}
+const sizeSprite = (s, h) => s.scale.set(h * s.userData.aspect, h, 1);
+
+/* galaxy layout: a small 3D force layout */
+const gal = prods.map(() => new THREE.Vector3((rnd() - .5) * 30, 10 + (rnd() - .5) * 20, (rnd() - .5) * 30));
+const pinned = new Set();
+function relax(steps, fixed = null) {
+  for (let s = 0; s < steps; s++) {
+    const f = gal.map(() => new THREE.Vector3());
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) { const d = gal[i].clone().sub(gal[j]); const L = Math.max(1, d.length()); d.multiplyScalar(140 / (L * L * L)); f[i].add(d); f[j].sub(d); }
+    pairs.forEach(([a, b, o]) => { const d = gal[b].clone().sub(gal[a]); const L = d.length(), rest = 13 - o / 12; d.multiplyScalar((L - rest) * .04 / Math.max(L, .01)); f[a].add(d); f[b].sub(d); });
+    gal.forEach((p, i) => { f[i].add(new THREE.Vector3(0, 10, 0).sub(p).multiplyScalar(.012)); if (i !== fixed && !pinned.has(i)) p.add(f[i].clampLength(0, 2)); });
+  }
+}
+relax(400);
+{ const c = gal.reduce((a, v) => a.add(v.clone().divideScalar(N)), new THREE.Vector3()); const far = Math.max(...gal.map(v => v.distanceTo(c)));
+  gal.forEach(v => v.sub(c).multiplyScalar(20 / far).add(new THREE.Vector3(0, 11, 0))); }
+
+/* skyline + cards layout */
+const SX = 1.0, ROW = 3.1, X0 = -21;
+const skyRowZ = r => (r - (N - 1) / 2) * ROW;
+const maxDay = Math.max(...prods.flatMap(p => [...p.past, p.f ? p.f.hi / 14 : 0]));
+const H = 7 / maxDay;
+const cardPos = r => new THREE.Vector3(r % 2 ? 10.5 : -10.5, 30 - Math.floor(r / 2) * 3.6, 0);
+
+/* product objects */
+const nodeGeo = new THREE.SphereGeometry(1, 28, 18), box = new THREE.BoxGeometry(.78, 1, 1.9);
+function drawRowCard(g, w, h, p, on) {
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = on ? "rgba(24,24,52,.97)" : "rgba(17,17,31,.94)"; g.strokeStyle = on ? "rgba(157,170,255,.95)" : "rgba(124,140,255,.35)"; g.lineWidth = on ? 5 : 3;
+  g.beginPath(); g.roundRect(4, 4, w - 8, h - 8, 26); g.fill(); g.stroke();
+  g.fillStyle = COLORS[p.type]; g.beginPath(); g.arc(44, 58, 11, 0, 7); g.fill();
+  g.fillStyle = "#e7e7f0"; g.font = "500 36px IBM Plex Sans, sans-serif"; g.fillText(p.title, 72, 70);
+  g.fillStyle = "#8d8da6"; g.font = "26px IBM Plex Sans, sans-serif"; g.fillText(`${p.stock} in stock · ${p.f ? `likely ${p.f.lo}–${p.f.hi}` : "too few sales"}`, 72, 118);
+  if (p.f) { const x0 = 560, W = 260, m = Math.max(p.stock, p.f.hi) * 1.08, x = v => x0 + v / m * W, c = RISK[p.band];
+    g.fillStyle = "rgba(255,255,255,.2)"; g.fillRect(x0, 80, x(p.stock) - x0, 8);
+    g.fillStyle = c + "38"; g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.roundRect(x(p.f.lo), 64, x(p.f.hi) - x(p.f.lo), 40, 8); g.fill(); g.stroke();
+    g.fillStyle = "#e7e7f0"; g.fillRect(x(p.stock) - 2, 58, 4, 52); }
+  g.font = "24px IBM Plex Sans, sans-serif"; g.textAlign = "right"; g.fillStyle = p.out ? RISK[p.band] : "#8d8da6";
+  g.fillText(!p.f ? "" : p.out ? `run out day ${p.out.e}${p.out.l ? "–" + p.out.l : "+"}` : "lasts 14+ days", w - 34, 94); g.textAlign = "left";
+}
+const items = prods.map(p => {
+  const col = new THREE.Color(COLORS[p.type]);
+  const node = new THREE.Mesh(nodeGeo, new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .55, roughness: .4, transparent: true })); node.userData.id = p.id; scene.add(node);
+  const halo = new THREE.Mesh(nodeGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.BackSide })); scene.add(halo);
+  const towers = [];
+  p.past.forEach((u, i) => { const m = new THREE.Mesh(box, new THREE.MeshStandardMaterial({ color: 0xc9cbe0, emissive: 0x000000, roughness: .55, transparent: true })); m.userData = { id: p.id, kind: "past", i, u, h: Math.max(.05, u * H) }; scene.add(m); towers.push(m); });
+  if (p.f) { let st = p.stock; for (let k = 1; k <= 14; k++) { st -= p.f.mid / 14; const gone = st <= 0;
+    const m = new THREE.Mesh(box, new THREE.MeshPhysicalMaterial({ color: gone ? 0xf87171 : 0x7c8cff, emissive: gone ? 0x2a0b0b : 0x1c2266, transparent: true, opacity: .5, roughness: .15 }));
+    m.userData = { id: p.id, kind: "ahead", k, gone, h: Math.max(.05, p.f.mid / 14 * H) }; scene.add(m); towers.push(m); } }
+  const cc = mkCanvas(1024, 168, (g, w, h) => drawRowCard(g, w, h, p, false)); const ct = canvasTex(cc);
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(19, 3.1), new THREE.MeshBasicMaterial({ map: ct, transparent: true, depthWrite: false, side: THREE.FrontSide })); card.userData.id = p.id; scene.add(card);
+  const label = textSprite(p.title, { size: 40 });
+  return { p, node, halo, towers, card, cardCanvas: cc, cardTex: ct, cardOn: false, label, pos: gal[p.id].clone(), cpos: cardPos(0), z: skyRowZ(0), hmul: 1 };
+});
+
+/* links: thin lines, plus glowing tubes, flowing dots and order counts for the product in focus */
+const linkMat = pairs.map(() => new THREE.LineBasicMaterial({ color: 0x7c8cff, transparent: true, opacity: .4 }));
+const links = pairs.map((l, i) => { const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), linkMat[i]); scene.add(ln); return ln; });
+const tubeGeo = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true);
+const tubes = pairs.map(([, , o]) => { const m = new THREE.Mesh(tubeGeo, new THREE.MeshBasicMaterial({ color: 0x9aa6ff, transparent: true, opacity: 0, depthWrite: false })); m.userData.r = .1 + o / maxOrders * .45; scene.add(m); return m; });
+const flowGeo = new THREE.SphereGeometry(.28, 10, 8);
+const flows = pairs.map(() => Array.from({ length: 5 }, () => { const m = new THREE.Mesh(flowGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })); scene.add(m); return m; }));
+const orderTags = pairs.map(([, , o]) => textSprite(`${o} orders`, { size: 30, color: "#c3c9ff", weight: 500, bg: "rgba(20,20,46,.92)" }));
+/* day ticks under the focused skyline row */
+const ticks = [-28, -21, -14, -7, 0, 7, 14].map(d => ({ d, s: textSprite(d === 0 ? "today" : dn(d), { size: 30, color: d === 0 ? "#c3c9ff" : "#8d8da6" }) }));
+const todayLine = new THREE.Mesh(new THREE.PlaneGeometry(.06, 1), new THREE.MeshBasicMaterial({ color: 0x9aa6ff, transparent: true, opacity: 0, depthWrite: false })); scene.add(todayLine);
+
+/* the selected product's detail card, in the world */
+const DW = 1024, DH = 500, dCanvas = document.createElement("canvas"); dCanvas.width = DW; dCanvas.height = DH; const dTex = canvasTex(dCanvas);
+const detail = new THREE.Mesh(new THREE.PlaneGeometry(15, 15 * DH / DW), new THREE.MeshBasicMaterial({ map: dTex, transparent: true, depthTest: false, depthWrite: false }));
+detail.renderOrder = 10; detail.visible = false; scene.add(detail);
+const TETHER_N = 32;
+const tether = new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({ length: TETHER_N }, () => new THREE.Vector3())), new THREE.LineBasicMaterial({ color: 0x9aa6ff, transparent: true, opacity: .7, depthTest: false }));
+tether.renderOrder = 9; tether.visible = false; scene.add(tether);
+let regions = [], pop = 0, shownId = null, hotRegion = null;
+/* a light, compact card: few lines, big type, so it stays readable at a small size */
+function drawDetail(p) {
+  const g = dCanvas.getContext("2d"); g.clearRect(0, 0, DW, DH); regions = [];
+  g.fillStyle = "rgba(14,14,28,.88)"; g.strokeStyle = "rgba(124,140,255,.45)"; g.lineWidth = 2; g.beginPath(); g.roundRect(3, 3, DW - 6, DH - 6, 36); g.fill(); g.stroke();
+  const T = (t, x, y, f, c, al = "left") => { g.font = f; g.fillStyle = c; g.textAlign = al; g.fillText(t, x, y); g.textAlign = "left"; return g.measureText(t).width; };
+  g.fillStyle = COLORS[p.type]; g.beginPath(); g.arc(58, 74, 14, 0, 7); g.fill();
+  T(p.title, 88, 92, "600 58px IBM Plex Sans, sans-serif", "#e7e7f0");
+  const hc = hotRegion === "close"; T("✕", DW - 60, 92, "40px IBM Plex Sans, sans-serif", hc ? "#e7e7f0" : "#6c6c86", "center"); regions.push({ k: "close", x: DW - 110, y: 40, w: 100, h: 80 });
+  // one line of numbers: stock · likely · run-out
+  T(String(p.stock), 50, 206, "500 64px IBM Plex Mono, monospace", "#e7e7f0"); T("in stock", 50, 248, "30px IBM Plex Sans, sans-serif", "#8d8da6");
+  T(p.f ? `${p.f.lo}–${p.f.hi}` : "–", 330, 206, "500 64px IBM Plex Mono, monospace", "#e7e7f0"); T("likely in 14 days", 330, 248, "30px IBM Plex Sans, sans-serif", "#8d8da6");
+  if (p.out) { T(`day ${p.out.e}${p.out.l ? "–" + p.out.l : "+"}`, DW - 50, 206, "500 64px IBM Plex Mono, monospace", RISK[p.band], "right"); T("could run out · untested", DW - 50, 248, "28px IBM Plex Sans, sans-serif", "#fbbf24", "right"); }
+  else if (p.f) { T("14+", DW - 50, 206, "500 64px IBM Plex Mono, monospace", "#8d8da6", "right"); T("days of stock", DW - 50, 248, "30px IBM Plex Sans, sans-serif", "#8d8da6", "right"); }
+  // bought with: up to two chips that jump to that product
+  let x = 50; const w2 = partners(p.id).slice(0, 2);
+  if (!w2.length) T("Not enough shared orders yet", 50, 338, "30px IBM Plex Sans, sans-serif", "#8d8da6");
+  w2.forEach(b => { g.font = "30px IBM Plex Sans, sans-serif"; const t = `${prods[b.id].title} · ${b.o}`, w = g.measureText(t).width + 40, hot = hotRegion === "go" + b.id;
+    g.strokeStyle = hot ? "#9aa6ff" : "rgba(124,140,255,.4)"; g.fillStyle = hot ? "rgba(124,140,255,.24)" : "rgba(124,140,255,.08)"; g.lineWidth = 2; g.beginPath(); g.roundRect(x, 300, w, 54, 27); g.fill(); g.stroke();
+    T(t, x + 20, 338, "30px IBM Plex Sans, sans-serif", "#e7e7f0"); regions.push({ k: "go" + b.id, x, y: 300, w, h: 54 }); x += w + 14; });
+  const ho = hotRegion === "open"; g.fillStyle = ho ? "#7c8cff" : "rgba(124,140,255,.18)"; g.strokeStyle = "#7c8cff"; g.beginPath(); g.roundRect(50, 390, DW - 100, 70, 18); g.fill(); g.stroke();
+  T("Open product page  →", DW / 2, 437, "500 34px IBM Plex Sans, sans-serif", ho ? "#0a0a14" : "#e7e7f0", "center"); regions.push({ k: "open", x: 50, y: 390, w: DW - 100, h: 70 });
+  dTex.needsUpdate = true;
+}
+
+/* ---------------- cameras ---------------- */
+const CAMS = [{ p: new THREE.Vector3(0, 30, 112), t: new THREE.Vector3(0, 13, 0) }, { p: new THREE.Vector3(-10, 64, 74), t: new THREE.Vector3(1, 0, 3) }, { p: new THREE.Vector3(0, 15, 80), t: new THREE.Vector3(0, 17, 0) }];
+// focused: the product sits left of centre, the detail card takes the right of the screen
+const FOCUS = [{ p: new THREE.Vector3(18, 30, 84), t: new THREE.Vector3(15, 11, 0) }, { p: new THREE.Vector3(6, 36, 76), t: new THREE.Vector3(15, 4, 0) }, { p: new THREE.Vector3(6, 17, 58), t: new THREE.Vector3(7, 17, 4) }];
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const blend = (A, m) => { const a = m <= 1 ? A[0] : A[1], b = m <= 1 ? A[1] : A[2], t = ease(m <= 1 ? m : m - 1); return { p: a.p.clone().lerp(b.p, t), t: a.t.clone().lerp(b.t, t) }; };
+const camFor = (m, f) => { const a = blend(CAMS, m), b = blend(FOCUS, m), k = ease(f); return { p: a.p.lerp(b.p, k), t: a.t.lerp(b.t, k) }; };
+let followCam = true;
+ctl.addEventListener("start", () => { if (modeTarget === null) followCam = false; });
+{ const c = camFor(0, 0); cam.position.copy(c.p); ctl.target.copy(c.t); }
+
+/* ---------------- frame loop ---------------- */
+function size() { const w = host.clientWidth, h = host.clientHeight; R.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+new ResizeObserver(size).observe(stage); size();
+const tmp = new THREE.Vector3(), up0 = new THREE.Vector3(0, 1, 0), center = new THREE.Vector3(0, 11, 0);
+let last = performance.now(), clock = 0;
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; clock += dt;
+  if (modeTarget !== null) { const d = modeTarget - mode; mode += Math.sign(d) * Math.min(Math.abs(d), dt * .9); if (Math.abs(d) < .001) { mode = modeTarget; modeTarget = null; } syncStops(); }
+  focus += ((selected !== null ? 1 : 0) - focus) * Math.min(1, dt * 3.2);
+  if (dragging !== null) relax(2, dragging);
+  const g2s = ease(Math.min(1, mode)), s2c = ease(Math.max(0, mode - 1)), wGal = 1 - g2s, wSky = g2s * (1 - s2c), fz = ease(focus);
+  const F = selected, near = F === null ? [] : partners(F), nearIds = new Set(near.map(n => n.id));
+  const hovNear = hovered === null ? null : new Set([hovered, ...partners(hovered).map(n => n.id)]);
+  items.forEach(it => {
+    const p = it.p, id = p.id, r = rank.indexOf(id), ok = matches(p), isF = id === F, isN = nearIds.has(id);
+    // galaxy: in focus the product moves to the middle, its partners form a ring around it, the rest drift away
+    const g = gal[id].clone();
+    if (F !== null) { let ft;
+      if (isF) ft = center.clone();
+      else if (isN) { const k = near.findIndex(n => n.id === id), a = k / near.length * Math.PI * 2 + .4; ft = center.clone().add(new THREE.Vector3(Math.cos(a) * 16, Math.sin(a * 2) * 4, Math.sin(a) * 16)); }
+      else ft = gal[id].clone().sub(center).multiplyScalar(2.1).add(center);
+      g.lerp(ft, fz); }
+    // skyline: in focus this row comes to the middle and grows, the others sink
+    it.z += ((isF ? 0 : skyRowZ(r)) - it.z) * .14;
+    it.hmul += ((F === null ? 1 : isF ? 1.9 : .06) - it.hmul) * .12;
+    const sky = new THREE.Vector3(X0 - .4, .9, it.z), cp = cardPos(r), cardDot = cp.clone().add(new THREE.Vector3(-10.6, 0, .2));
+    const target = mode <= 1 ? g.lerp(sky, g2s) : sky.clone().lerp(cardDot, s2c);
+    it.pos.lerp(target, dragging === id ? 1 : .14);
+    const sz = (.7 + p.sold14 / 90) * (1 - .72 * g2s) * (1 - .6 * s2c) * (isF ? 1 + .3 * fz * wGal : 1);
+    it.node.position.copy(it.pos); it.node.scale.setScalar(sz * (id === hovered && !isF ? 1.18 : 1));
+    const faded = !ok || (F !== null && !isF && !isN) || (F === null && hovNear !== null && !hovNear.has(id) && mode < .5);
+    it.node.material.opacity = (faded ? (F !== null ? .1 : .2) : 1) * (1 - .85 * s2c) * (F !== null && mode > .5 ? (isF ? 1 - fz : .15 * (1 - fz)) : 1);
+    it.node.material.color.set(isF ? 0xffffff : COLORS[p.type]); it.node.material.emissiveIntensity = isF ? 1.2 : isN ? .9 : .55;
+    it.halo.position.copy(it.pos); it.halo.scale.setScalar(sz * (1.7 + Math.sin(clock * 2.4) * .12)); it.halo.material.opacity = isF ? .16 * fz * wGal : 0;
+    // towers rise left to right as the skyline comes in, and sink as the cards come in
+    const n = it.towers.length;
+    it.towers.forEach((m, i) => {
+      const grow = Math.min(1, Math.max(0, mode * 1.5 - (i / n) * .5)) * (1 - s2c);
+      const y = m.userData.h * it.hmul * Math.max(.001, grow);
+      m.scale.set(isF ? 1 + .25 * fz : 1, y, isF ? 1 + .4 * fz : 1); m.position.set(X0 + 2 + i * SX, y / 2, it.z);
+      m.visible = grow > .002 && y > .02;
+      m.material.opacity = (!ok ? .1 : F !== null && !isF ? .12 * (1 - fz) : hovered !== null && hovered !== id && F === null ? .25 : m.userData.kind === "past" ? 1 : m.userData.gone ? .35 : .58) * Math.min(1, grow * 2);
+      m.material.emissive.setHex(hoverTower === m ? 0x4a4e80 : m.userData.kind === "past" ? 0x000000 : m.userData.gone ? 0x2a0b0b : 0x1c2266);
+    });
+    // card: rises out of its row and stands up in the list wall; in focus it comes forward
+    const cTarget = isF ? cp.clone().lerp(new THREE.Vector3(-2, 17, 6), fz) : cp;
+    it.cpos.lerp(new THREE.Vector3(0, 0, it.z).lerp(cTarget, s2c), .14);
+    it.card.position.copy(it.cpos); it.card.rotation.x = -Math.PI / 2 * (1 - s2c);
+    it.card.visible = s2c > .01;
+    it.card.material.opacity = s2c * (!ok ? .2 : F !== null && !isF ? .12 : hovered !== null && hovered !== id ? .5 : 1);
+    it.card.scale.setScalar(isF ? 1 + .2 * fz : id === hovered ? 1.03 : 1);
+    const on = isF || id === hovered; if (on !== it.cardOn) { it.cardOn = on; drawRowCard(it.cardCanvas.getContext("2d"), 1024, 168, p, on); it.cardTex.needsUpdate = true; }
+    // label sprite: above the dot in the galaxy, at the start of the row on the skyline
+    const L = it.label, showGal = (isF || isN || id === hovered) ? 1 : 0;
+    if (mode < .5) { L.center.set(.5, -.4); L.position.copy(it.pos).add(tmp.set(0, sz * 1.15, 0)); sizeSprite(L, isF ? 2.3 : 1.7); L.material.opacity = showGal * Math.max(0, 1 - g2s * 2) * (ok ? 1 : .3); }
+    else if (isF) { // focused row: its name sits above the start of the row, never off-screen
+      L.center.set(0, 0); L.position.set(X0 + 2 - .4, 7 * it.hmul + 1.4, it.z); sizeSprite(L, 2.2);
+      L.material.opacity = Math.max(0, (g2s - .5) * 2) * (1 - s2c); }
+    else { L.center.set(1, .5); L.position.set(X0 - 1.5, .9, it.z); sizeSprite(L, 1.25);
+      L.material.opacity = Math.max(0, (g2s - .5) * 2) * (1 - s2c) * (!ok ? .3 : 1) * (F !== null ? 1 - fz : 1); }
+    L.visible = L.material.opacity > .01;
+  });
+  pairs.forEach(([a, b, o], i) => { const A = items[a].pos, B = items[b].pos;
+    const pos = links[i].geometry.attributes.position; pos.setXYZ(0, A.x, A.y, A.z); pos.setXYZ(1, B.x, B.y, B.z); pos.needsUpdate = true;
+    const mine = F !== null && (a === F || b === F), hov = F === null && hovered !== null && (a === hovered || b === hovered);
+    linkMat[i].opacity = wGal * (mine ? 0 : F !== null ? .04 : hov ? .9 : hovered !== null ? .08 : .35) * (matches(prods[a]) && matches(prods[b]) ? 1 : .15);
+    const t = tubes[i], vis = mine ? fz * wGal : 0; t.material.opacity = .75 * vis; t.visible = vis > .01;
+    if (t.visible) { const d = B.clone().sub(A); t.position.copy(A).add(B).multiplyScalar(.5); t.quaternion.setFromUnitVectors(up0, d.clone().normalize()); t.scale.set(t.userData.r, d.length(), t.userData.r); }
+    // more shared orders = faster and more dots (83 orders flows about 5x faster than 12)
+    const rate = .08 + .45 * (o / maxOrders), shown = Math.max(1, Math.round(1 + 4 * o / maxOrders));
+    flows[i].forEach((m, k) => { m.visible = vis > .01 && k < shown; if (!m.visible) return; const from = a === F ? A : B, to = a === F ? B : A, s = (clock * rate + k / shown) % 1;
+      m.position.copy(from).lerp(to, s); m.material.opacity = vis * Math.sin(s * Math.PI); });
+    const tag = orderTags[i]; tag.material.opacity = vis; tag.visible = vis > .01; if (tag.visible) { tag.position.copy(A).add(B).multiplyScalar(.5).add(tmp.set(0, 1.2, 0)); sizeSprite(tag, 1.25); }
+  });
+  const tickVis = F !== null ? fz * wSky : 0;
+  ticks.forEach(({ d, s }) => { s.visible = tickVis > .01; s.material.opacity = tickVis; s.center.set(.5, .5); s.position.set(X0 + 2 + (d + 28) * SX - (d === 0 ? .5 : 0), .05, 2.8); sizeSprite(s, .95); });
+  todayLine.visible = tickVis > .01; todayLine.material.opacity = .7 * tickVis; todayLine.position.set(X0 + 2 + 27.5 * SX, 4, 0); todayLine.scale.y = 8; todayLine.quaternion.copy(cam.quaternion);
+  // detail card: springs out of the product, then sits on the right of the screen
+  if (F !== null && shownId !== F) { shownId = F; hotRegion = null; drawDetail(prods[F]); pop = 0; }
+  pop += ((F !== null ? 1 : 0) - pop) * Math.min(1, dt * 5);
+  detail.visible = tether.visible = pop > .02 && shownId !== null;
+  if (detail.visible) {
+    const it = items[shownId], a = mode > 1.5 ? it.cpos.clone().add(tmp.set(9.5 * it.card.scale.x, 0, 0)) : mode > .5 ? new THREE.Vector3(X0 + 2 + 41, it.towers[it.towers.length - 1]?.scale.y ?? 1, it.z) : it.pos.clone();
+    const fwd = cam.getWorldDirection(new THREE.Vector3()), right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion), upv = new THREE.Vector3(0, 1, 0).applyQuaternion(cam.quaternion);
+    const D = 30, hv = D * Math.tan(cam.fov * Math.PI / 360), hw = hv * cam.aspect;
+    const spot = cam.position.clone().addScaledVector(fwd, D).addScaledVector(right, hw * .68).addScaledVector(upv, hv * .12);
+    const k = 1 - Math.pow(1 - Math.min(1, pop), 3), over = 1 + Math.sin(Math.min(1, pop) * Math.PI) * .06, fit = Math.min((hw * .48) / 15, (hv * .5) / (15 * DH / DW));   // about a quarter of the stage width
+    detail.position.copy(a.clone().lerp(spot, k)); detail.quaternion.copy(cam.quaternion); detail.scale.setScalar(Math.max(.01, k * over * fit)); detail.material.opacity = Math.min(1, pop * 1.4);
+    // tether: a smooth curve from the product to the middle of the card's left edge (both points move smoothly)
+    const edge = detail.position.clone().addScaledVector(right, -7.5 * detail.scale.x);
+    const bend = new THREE.QuadraticBezierCurve3(a, a.clone().lerp(edge, .5).addScaledVector(upv, a.distanceTo(edge) * .08), edge);   // a gentle arc, never doubling back
+    const tp = tether.geometry.attributes.position; bend.getPoints(TETHER_N - 1).forEach((v, j) => tp.setXYZ(j, v.x, v.y, v.z)); tp.needsUpdate = true;
+    tether.geometry.computeBoundingSphere();
+    // only once the card has landed, and never when the product sits behind the card on screen
+    const pa = a.clone().project(cam), pe = edge.clone().project(cam);
+    tether.material.opacity = .6 * Math.max(0, (pop - .6) / .4) * (pa.x < pe.x - .02 && pa.z < 1 ? 1 : 0);
+  }
+  if (F === null && pop < .02) shownId = null;
+  if (followCam || modeTarget !== null || (focus > .02 && focus < .98)) { const c = camFor(mode, focus); cam.position.lerp(c.p, .08); ctl.target.lerp(c.t, .08); }
+  if (mode > 1.5) { ctl.minAzimuthAngle = -.45; ctl.maxAzimuthAngle = .45; ctl.minPolarAngle = 1.2; ctl.maxPolarAngle = 1.75; } else { ctl.minAzimuthAngle = -Infinity; ctl.maxAzimuthAngle = Infinity; ctl.minPolarAngle = .1; ctl.maxPolarAngle = 1.42; }
+  ctl.autoRotate = mode < .05 && F === null && dragging === null && hovered === null;
+  document.getElementById("back").classList.toggle("on", F !== null); document.getElementById("answer").style.opacity = F !== null ? 0 : 1;
+  ctl.update(); R.render(scene, cam); requestAnimationFrame(frame);
+}
+
+/* ---------------- picking, clicking, dragging ---------------- */
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2(), tip = document.getElementById("tip");
+const aim = e => { const b = R.domElement.getBoundingClientRect(); ptr.set((e.clientX - b.left) / b.width * 2 - 1, -(e.clientY - b.top) / b.height * 2 + 1); ray.setFromCamera(ptr, cam); };
+function detailRegion(e) { if (!detail.visible || pop < .9) return undefined; aim(e); const h = ray.intersectObject(detail)[0]; if (!h) return undefined;
+  const x = h.uv.x * DW, y = (1 - h.uv.y) * DH; return regions.find(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)?.k ?? null; }
+function pickAt(e) {
+  aim(e);
+  const objs = mode < .5 ? items.map(i => i.node) : mode < 1.5 ? items.flatMap(i => i.towers.filter(t => t.visible)).concat(items.map(i => i.node)) : items.map(i => i.card);
+  const h = ray.intersectObjects(objs)[0]; return h ? h.object : null;
+}
+let down = null, grab = null; const plane = new THREE.Plane(), hitP = new THREE.Vector3();
+R.domElement.addEventListener("pointerdown", e => {
+  down = [e.clientX, e.clientY];
+  if (detailRegion(e) !== undefined) return;
+  const o = pickAt(e); grab = o && mode < .15 && selected === null ? o.userData.id : null;   // may become a drag
+  if (grab !== null) { ctl.enabled = false; plane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).negate(), gal[grab]); R.domElement.setPointerCapture(e.pointerId); }
+});
+R.domElement.addEventListener("pointermove", e => {
+  if (grab !== null && down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) { dragging = grab; pinned.add(grab); }
+  if (dragging !== null) { aim(e); if (ray.ray.intersectPlane(plane, hitP)) { hitP.y = Math.max(1.5, hitP.y); gal[dragging].copy(hitP); } return; }
+  const reg = detailRegion(e);
+  if (reg !== undefined) { if (reg !== hotRegion) { hotRegion = reg; drawDetail(prods[shownId]); } R.domElement.style.cursor = reg ? "pointer" : "default"; hovered = null; hoverTower = null; tip.style.display = "none"; return; }
+  if (hotRegion) { hotRegion = null; if (shownId !== null) drawDetail(prods[shownId]); }
+  const o = pickAt(e); hovered = o ? o.userData.id : null; hoverTower = o && o.userData.kind ? o : null;
+  R.domElement.style.cursor = o ? (mode < .15 && selected === null ? "grab" : "pointer") : "default";
+  if (hoverTower) { const u = hoverTower.userData, p = prods[u.id], b = stage.getBoundingClientRect();
+    tip.style.display = "block"; tip.style.left = Math.min(b.width - 210, e.clientX - b.left + 14) + "px"; tip.style.top = Math.max(8, e.clientY - b.top - 54) + "px";
+    tip.innerHTML = u.kind === "past" ? `<b>${p.title}</b> · ${dn(u.i - 28)}<div class="m"><b style="color:#e7e7f0">${u.u}</b> sold · Shopify</div>`
+      : `<b>${p.title}</b> · ${dn(u.k)}<div class="m">likely <b style="color:#e7e7f0">${Math.floor(p.f.lo / 14)}–${Math.ceil(p.f.hi / 14)}</b> · Kumo</div>${u.gone ? `<div class="m" style="color:#f87171">stock likely gone by then</div>` : ""}`;
+  } else tip.style.display = "none";
+});
+R.domElement.addEventListener("pointerup", e => {
+  ctl.enabled = true;
+  if (dragging !== null) { dragging = null; grab = null; return; }
+  grab = null;
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  const reg = detailRegion(e);
+  if (reg !== undefined) { if (reg === "close") select(null); else if (reg === "open") location.href = PRODUCT_PAGE; else if (reg?.startsWith("go")) select(+reg.slice(2)); return; }
+  const o = pickAt(e); select(o ? o.userData.id : null);
+});
+R.domElement.addEventListener("pointerleave", () => { hovered = null; hoverTower = null; tip.style.display = "none"; });
+
+/* ---------------- controls ---------------- */
+function syncStops() {
+  const nearest = Math.round(modeTarget ?? mode);
+  document.querySelectorAll(".stops button").forEach(b => b.classList.toggle("on", +b.dataset.m === nearest));
+  document.getElementById("prev").disabled = nearest === 0; document.getElementById("next").disabled = nearest === 2;
+  document.getElementById("hint").textContent = selected !== null ? "Click another product to jump to it" : nearest === 0 ? "Drag a product to move it · click to look closer" : nearest === 1 ? "Hover a tower for that day · click a row to look closer" : "Click a card to look closer";
+}
+const go = d => { const from = modeTarget ?? Math.round(mode); modeTarget = Math.max(0, Math.min(2, from + d)); followCam = true; syncStops(); };
+document.querySelectorAll(".stops button").forEach(b => b.onclick = () => { modeTarget = +b.dataset.m; followCam = true; syncStops(); });
+document.getElementById("prev").onclick = () => go(-1); document.getElementById("next").onclick = () => go(1);
+document.getElementById("back").onclick = () => select(null);
+addEventListener("keydown", e => { if (e.key === "Escape") select(null); if (e.target.tagName === "INPUT") return; if (e.key === "ArrowRight") go(1); if (e.key === "ArrowLeft") go(-1); });
+const typeSel = document.getElementById("type");
+Object.keys(COLORS).forEach(t => typeSel.insertAdjacentHTML("beforeend", `<option>${t}</option>`));
+function refilter() { rank = order(); document.getElementById("count").textContent = `${prods.filter(matches).length} of ${N} products`; }
+document.getElementById("q").oninput = e => { q = e.target.value.trim().toLowerCase(); refilter(); const m = prods.filter(matches); if (q && m.length === 1) select(m[0].id); };
+typeSel.onchange = e => { type = e.target.value; refilter(); };
+document.querySelectorAll("#sort button").forEach(b => b.onclick = () => { sort = b.dataset.s; document.querySelectorAll("#sort button").forEach(x => x.classList.toggle("on", x === b)); refilter(); });
+function select(id) {
+  if (id === selected) return;
+  if (id !== null && selected !== null) { pop = 0; shownId = null; }
+  selected = id; followCam = true; hovered = null;
+  document.getElementById("crumb").innerHTML = id === null ? "" : `/ <b>${prods[id].title}</b>`;
+  syncStops();
+}
+refilter(); syncStops();
+requestAnimationFrame(frame);
+window.__m = m => { modeTarget = m; followCam = true; }; window.__sel = select; window.__mode = () => mode;
+</script>
+</body>
+</html>
