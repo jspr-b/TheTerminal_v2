@@ -15,6 +15,7 @@ ID_MAP_TABLES = frozenset({"locations", "products", "product_variants", "custome
 _KEY = ("merchant_id", "source", "external_id")
 DEMAND_QUERY = "demand_14d"
 MIN_SHARED_ORDERS = 2  # "bought in the same order" needs at least this many shared orders
+PAIR_DAYS = 90  # bought together: the product page and the basket galaxy use the same window
 
 
 class OntologyService:
@@ -177,9 +178,9 @@ class OntologyService:
                join orders o on o.merchant_id = l1.merchant_id and o.id = l1.order_id and o.cancelled_at is null
                join order_lines l2 on l2.merchant_id = l1.merchant_id and l2.order_id = l1.order_id and l2.product_id <> l1.product_id
                join products p on p.merchant_id = l2.merchant_id and p.id = l2.product_id
-               where l1.merchant_id = %s and l1.product_id = %s
+               where l1.merchant_id = %s and l1.product_id = %s and l1.ordered_at >= now() - make_interval(days => %s)
                group by p.id, p.title having count(distinct l2.order_id) >= %s order by orders desc, p.title limit 5""",
-            (merchant_id, product_id, MIN_SHARED_ORDERS))
+            (merchant_id, product_id, PAIR_DAYS, MIN_SHARED_ORDERS))
         record = await self._all(
             """select pr.generated_at, pr.lower::float, pr.value::float, pr.upper::float,
                       (select coalesce(sum(l.quantity), 0) from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id

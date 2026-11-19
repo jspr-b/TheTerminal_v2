@@ -19,7 +19,7 @@ from .importer import run_import
 from .kumo import KumoClient
 from .kumo_local import LocalKumo
 from .nango import NangoClient, RecordSource
-from .ontology import OntologyService
+from .ontology import MIN_SHARED_ORDERS, PAIR_DAYS, OntologyService
 from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductPairs, ProductsOverview, TrackRecord
 
 logging.basicConfig(level=logging.INFO)
@@ -161,7 +161,7 @@ async def products_overview(merchant: Merchant, svc: Service) -> dict:
     return {"products": await svc.products_overview(merchant)}
 
 
-PAIR_DAYS, MIN_SHARED = 90, 2
+MIN_SHARED = MIN_SHARED_ORDERS  # one window and threshold for the galaxy and the product page
 
 
 @app.get("/merchants/{merchant_id}/products/pairs", response_model=ProductPairs)

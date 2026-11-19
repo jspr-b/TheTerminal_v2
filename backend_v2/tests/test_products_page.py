@@ -128,6 +128,20 @@ def test_bought_together_needs_two_shared_orders(client, shops, db):  # noqa: F8
     assert [(x["title"], x["orders"]) for x in detail(client, a, pid)["bought_together"]] == [("Often", 2)]
 
 
+def test_bought_together_uses_the_same_window_as_the_galaxy(client, shops, db):  # noqa: F811
+    """The product page and the basket galaxy must agree: only orders from the last 90 days count."""
+    a, _ = shops
+    do_import(client, a, "a")
+    pid, old, new = product_of(db, a), add_product(db, a, "Old"), add_product(db, a, "New")
+    add_order(db, a, [pid, old], 100)
+    add_order(db, a, [pid, old], 120)
+    add_order(db, a, [pid, new], 3)
+    add_order(db, a, [pid, new], 4)
+    assert [(x["title"], x["orders"]) for x in detail(client, a, pid)["bought_together"]] == [("New", 2)]
+    link = {frozenset((l["source"], l["target"])): l["orders"] for l in pairs(client, a)["links"]}
+    assert link == {frozenset((str(pid), str(new))): 2}
+
+
 def test_bought_together_counts_only_own_orders(client, shops, db):  # noqa: F811
     a, b = shops
     do_import(client, a, "a")

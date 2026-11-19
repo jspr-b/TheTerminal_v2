@@ -105,7 +105,7 @@ interface TrackRecord {
 //   sold_14d: number;
 //   sellout: Sellout | null;
 //   by_variant: { id: string; title: string | null; sku: string | null; units: number }[];      // exact stock per variant
-//   bought_together: { product_id: string; title: string; orders: number }[];  // exact: top 5 products in the same orders, at least 2 orders
+//   bought_together: { product_id: string; title: string; orders: number }[];  // exact: top 5 products in the same orders in the last 90 days (same window as ProductPairs), at least 2 orders
 //   track_record: { generated_at: string; lower: number; value: number; upper: number; actual: number }[];
 //       // past Kumo ranges whose 14 days are over, with what really sold in those 14 days; newest first, at most 6
 
