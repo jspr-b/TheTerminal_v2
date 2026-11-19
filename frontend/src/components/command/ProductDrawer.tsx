@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { CommandProduct } from "@/lib/api";
 import { WillSell } from "@/components/shared/Forecast";
@@ -25,7 +26,7 @@ export default function ProductDrawer({ products, selected }: { products: Comman
             <thead>
               <tr className="sticky top-0 bg-[#12121f] text-left text-muted">
                 <th className="px-3.5 py-1.5 font-medium">Product</th>
-                <th className="px-2 py-1.5 font-medium">Stock<span className="source-chip">Shopify</span></th>
+                <th className="px-2 py-1.5 font-medium">Stock{selected && " here"}<span className="source-chip">Shopify</span></th>
                 {/* Forecasts are per product across the store; per-location demand (#2) is not built. */}
                 <th className="px-2 py-1.5 font-medium">
                   Will sell, 14 days{selected && ", all locations"}<span className="source-chip">Kumo</span>
@@ -34,8 +35,14 @@ export default function ProductDrawer({ products, selected }: { products: Comman
             </thead>
             <tbody>
               {rows.map((p) => (
-                <tr key={p.id} className="border-t border-white/10">
-                  <td className="max-w-[320px] truncate px-3.5 py-1.5">{p.title}</td>
+                <tr key={p.id} className="group border-t border-white/10 hover:bg-accent/[0.08]">
+                  <td className="max-w-[320px] truncate px-3.5 py-1.5">
+                    {/* Command → product: the same id opens the product page with all its data */}
+                    <Link href={`/products/${encodeURIComponent(p.id)}`} className="hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
+                      {p.title}
+                      <span className="ml-1.5 text-muted opacity-0 group-hover:opacity-100" aria-hidden="true">Open →</span>
+                    </Link>
+                  </td>
                   <td className="px-2 py-1.5">{p.shown.toLocaleString()}</td>
                   <td className="px-2 py-1.5"><WillSell p={p} /></td>
                 </tr>

@@ -1,273 +1,301 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import GalaxyPanel from "@/components/products/GalaxyPanel";
-import InsightStrip from "@/components/products/InsightStrip";
-import BasketGalaxy from "@/components/shared/BasketGalaxy";
-import Modal from "@/components/shared/Modal";
-import SourceChip from "@/components/shared/SourceChip";
-import PageShell, { PageTitle, SubHeading } from "@/components/shell/PageShell";
-import { rangeText } from "@/components/shared/Forecast";
-import { LoadError, Skeleton, useLoad } from "@/components/shared/Load";
-import {
-  ACCENT,
-  DIM,
-  RISK_COLOR,
-  RISK_TEXT,
-  Sparkline,
-  StockVsRange,
-  UntestedTag,
-  runoutWords,
-  selloutVisibility,
-  useWidth,
-} from "@/components/shared/ProductVisuals";
-import { RunoutChip } from "@/components/shared/Runout";
-import { SectionList } from "@/components/shared/Sections";
-import { DEV_MERCHANT, getPageState, getProductPairs, getProductsOverview, getTrackRecord, type OverviewProduct, type Sellout } from "@/lib/api";
-import { day } from "@/lib/format";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { STAGE_BACKGROUND } from "@/components/shared/BasketGalaxy";
+import { LoadError, useLoad } from "@/components/shared/Load";
+import { RISK_TEXT, UntestedTag, selloutVisibility } from "@/components/shared/ProductVisuals";
+import PageShell from "@/components/shell/PageShell";
+import ProductList, { LIST_W } from "@/components/products/world/ProductList";
+import { worldData } from "@/components/products/world/data";
+import { createWorld, type View, type WorldApi } from "@/components/products/world/engine";
+import { DEV_MERCHANT, getProductPairs, getProductsOverview, type OverviewProduct, type Sellout } from "@/lib/api";
 
-const SPARK_W = 96;
-const GAP = 16;
-const MIN_RANGE = 140;
-const RUNOUT_W = 168; // a plain chip: "could run out day 3–6"; the chart lives in the "Could run out" pop-up
-const OPEN_W = 44;
-
-/** Column widths from the list width. Below the minimums the rows scroll sideways instead of squeezing. */
-function columns(width: number, sellout: boolean) {
-  const name = width < 760 ? 190 : 236;
-  const n = sellout ? 4 : 3;
-  const runout = sellout ? RUNOUT_W : 0;
-  const range = Math.max(MIN_RANGE, width - name - SPARK_W - runout - OPEN_W - GAP * n);
-  const template = sellout ? `${name}px ${SPARK_W}px ${range}px ${runout}px ${OPEN_W}px` : `${name}px ${SPARK_W}px ${range}px ${OPEN_W}px`;
-  const total = name + SPARK_W + range + runout + OPEN_W + GAP * n;
-  return { range, runout, template, total };
-}
-
-/** By sell-out urgency (earliest run-out day first, lasting past day 14 last); otherwise by title. */
-function sortProducts(products: OverviewProduct[], bySellout: boolean): OverviewProduct[] {
-  const key = (p: OverviewProduct) => (p.sellout ? (p.sellout.earliest_day ?? 50) : 99);
-  return [...products].sort((a, b) => (bySellout ? key(a) - key(b) : 0) || a.title.localeCompare(b.title));
-}
+const VIEWS: { key: string; label: string; sub: string }[] = [
+  { key: "galaxy", label: "Galaxy", sub: "bought together" },
+  { key: "skyline", label: "Skyline", sub: "sales per day" },
+  { key: "cards", label: "Cards", sub: "3D list" },
+];
+type Sort = "runout" | "sold" | "name";
+const SORTS: [Sort, string][] = [
+  ["runout", "Runs out first"],
+  ["sold", "Sells most"],
+  ["name", "A–Z"],
+];
 
 function Answer({ products, sellout }: { products: OverviewProduct[]; sellout: boolean }) {
   if (!sellout) return <>Stock now and what each product will likely sell in the next 14 days.</>;
   const counted = products.filter((p) => p.sellout && p.forecast_state === "forecast");
   const n = (band: Sellout["band"]) => counted.filter((p) => p.sellout?.band === band).length;
-  const stale = products.filter((p) => p.sellout && p.forecast_state === "stale").length;
   return (
     <>
       In the next 14 days, sell-out risk is <span className={`font-medium ${RISK_TEXT.high}`}>high for {n("high")}</span>,{" "}
       <span className={`font-medium ${RISK_TEXT.medium}`}>medium for {n("medium")}</span> and{" "}
       <span className={`font-medium ${RISK_TEXT.low}`}>low for {n("low")}</span> products.
-      {stale > 0 && ` ${stale} with a stale range ${stale === 1 ? "is" : "are"} not counted.`}
     </>
   );
 }
 
-function ProductRow({
-  p,
-  cols,
-  sellout,
-  selected,
-  onSelect,
-  onOpen,
-}: {
-  p: OverviewProduct;
-  cols: ReturnType<typeof columns>;
-  sellout: boolean;
-  selected: boolean;
-  onSelect: () => void;
-  onOpen: () => void;
-}) {
-  const predicted = p.forecast_state !== "too_few_sales" && p.forecast !== null;
-  const stale = p.forecast_state === "stale";
-  const color = stale ? DIM : sellout && p.sellout ? RISK_COLOR[p.sellout.band] : ACCENT;
-  const label = [
-    p.title,
-    `${p.units} in stock`,
-    predicted && p.forecast ? `likely sells ${rangeText(p.forecast)} in 14 days` : "too few sales to predict",
-    sellout && p.sellout ? runoutWords(p.sellout) : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
+function World() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const overview = useLoad(() => getProductsOverview(DEV_MERCHANT), `products-overview:${DEV_MERCHANT}`);
+  const pairs = useLoad(() => getProductPairs(DEV_MERCHANT), `products-pairs:${DEV_MERCHANT}`);
+  const host = useRef<HTMLDivElement>(null);
+  const tip = useRef<HTMLDivElement>(null);
+  const api = useRef<WorldApi | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [q, setQ] = useState(params.get("q") ?? "");
+  const [type, setType] = useState(params.get("type") ?? "");
+  const [sort, setSort] = useState<Sort>(SORTS.some(([k]) => k === params.get("sort")) ? (params.get("sort") as Sort) : "runout");
+
+  const products = useMemo(() => overview.data?.products ?? [], [overview.data]);
+  const vis = selloutVisibility(products.map((p) => p.sellout));
+  const viewIndex = Math.max(0, VIEWS.findIndex((v) => v.key === params.get("view")));
+  const focusId = params.get("focus");
+
+  // The world's products, from the real API: one index per product.
+  const world = useMemo(() => {
+    if (!overview.data || !pairs.data) return null;
+    return worldData(products, pairs.data);
+  }, [overview.data, pairs.data, products]);
+
+  // View and focus live in the URL (docs/routing.md): refresh, Back and shared links land in the same place.
+  const setParams = useCallback(
+    (change: Record<string, string | null>, push = false) => {
+      const next = new URLSearchParams(window.location.search);
+      Object.entries(change).forEach(([k, v]) => (v === null || v === "" ? next.delete(k) : next.set(k, v)));
+      const qs = next.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+      if (url === `${pathname}${window.location.search}`) return;
+      if (push) router.push(url, { scroll: false });
+      else router.replace(url, { scroll: false });
+    },
+    [pathname, router],
+  );
+  const latest = useRef<{ viewIndex: number; focusId: string | null; filter: [boolean[], number[]] | null }>({ viewIndex, focusId, filter: null });
+  latest.current.viewIndex = viewIndex;
+  latest.current.focusId = focusId;
+
+  // Build the world once per data set; dispose it on unmount (frees the WebGL context).
+  useEffect(() => {
+    const el = host.current;
+    const tp = tip.current;
+    if (!world || !el || !tp) return;
+    let cancelled = false;
+    let built: WorldApi | null = null;
+    createWorld(el, tp, world.items, world.links, {
+      onSelect: (i) => setParams({ focus: i === null ? null : world.items[i].id }, i !== null),
+      onOpen: (i) => router.push(`/products/${encodeURIComponent(world.items[i].id)}`),
+      onView: () => undefined,
+    })
+      .then((w) => {
+        if (cancelled) return w.dispose();
+        built = w;
+        api.current = w;
+        const { viewIndex: v, focusId: f, filter } = latest.current;
+        if (filter) w.setFilter(...filter);
+        w.setInset(new URLSearchParams(window.location.search).get("list") === "1" ? LIST_W + 34 : 34);
+        w.setView(v as View);
+        w.select(f ? (world.index.get(f) ?? null) : null);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+      built?.dispose();
+      api.current = null;
+    };
+  }, [world, router, setParams]);
+
+  // Follow the URL.
+  useEffect(() => api.current?.setView(viewIndex as View), [viewIndex]);
+  useEffect(() => {
+    if (world) api.current?.select(focusId ? (world.index.get(focusId) ?? null) : null);
+  }, [focusId, world]);
+
+  // Filters and sort: dimmed products and the order of skyline rows and cards.
+  const matches = useMemo(() => {
+    const ql = q.trim().toLowerCase();
+    return world ? world.items.map((p) => (!ql || p.title.toLowerCase().includes(ql)) && (!type || p.type === type)) : [];
+  }, [q, type, world]);
+  const order = useMemo(() => {
+    if (!world) return [];
+    const key = (i: number) => {
+      const p = world.items[i];
+      return sort === "runout" ? (p.out ? p.out.e : p.f ? 50 : 99) : sort === "sold" ? -p.sold14 : 0;
+    };
+    return world.items.map((_, i) => i).sort((a, b) => Number(matches[b]) - Number(matches[a]) || key(a) - key(b) || world.items[a].title.localeCompare(world.items[b].title));
+  }, [matches, sort, world]);
+  useEffect(() => {
+    if (!world) return;
+    latest.current.filter = [matches, order];
+    api.current?.setFilter(matches, order);
+  }, [matches, order, world]);
+
+  // The slide-in list (state in the URL: ?list=1).
+  const listOpen = params.get("list") === "1";
+  useEffect(() => api.current?.setInset(listOpen ? LIST_W + 34 : 34), [listOpen, world]);
+  useEffect(() => {
+    setParams({ q: q.trim() || null, type: type || null, sort: sort === "runout" ? null : sort });
+  }, [q, type, sort, setParams]);
+  // Searching down to one product looks at it.
+  useEffect(() => {
+    if (!world || !q.trim()) return;
+    const hits = matches.flatMap((ok, i) => (ok ? [i] : []));
+    if (hits.length === 1) setParams({ focus: world.items[hits[0]].id });
+  }, [matches, q, world, setParams]);
+
+  const goView = useCallback((i: number) => setParams({ view: i <= 0 ? null : VIEWS[Math.min(2, i)].key }), [setParams]);
+  // Esc closes the focus; arrow keys switch views.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setParams({ focus: null });
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+      if (e.key === "ArrowRight" && viewIndex < 2) goView(viewIndex + 1);
+      if (e.key === "ArrowLeft" && viewIndex > 0) goView(viewIndex - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [viewIndex, setParams, goView]);
+
+  const types = useMemo(() => Array.from(new Set(world?.items.map((p) => p.type) ?? [])).sort(), [world]);
+  const count = matches.filter(Boolean).length;
+  const focused = focusId && world ? world.items[world.index.get(focusId) ?? -1] : undefined;
+  const hint = focused
+    ? viewIndex === 1
+      ? "Click any tower or use ← → to see that day · Esc to go back"
+      : "Click another product to jump to it"
+    : viewIndex === 0
+      ? "Drag a product to move it · click to look closer"
+      : viewIndex === 1
+        ? "Hover a tower for that day · click a row to look closer"
+        : "Click a card to look closer";
+
   return (
-    <div
-      data-product={p.id}
-      aria-selected={selected}
-      onClick={onSelect}
-      onDoubleClick={onOpen}
-      title={`${label}. Double-click to open.`}
-      className={`grid cursor-pointer items-center border-b border-white/[0.07] py-1.5 pl-2 ${
-        selected ? "bg-accent/[0.09] shadow-[inset_2px_0_0_#7c8cff]" : "hover:bg-white/[0.02]"
-      }`}
-      style={{ gridTemplateColumns: cols.template, columnGap: GAP }}
-    >
-      <button type="button" onClick={onSelect} aria-label={`Select ${label}`} aria-pressed={selected} className="min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
-        <div className="flex items-baseline">
-          <b className="truncate font-medium">{p.title}</b>
-          {stale && p.forecast && <span className="stale-tag font-normal">stale · {day(p.forecast.generated_at)}</span>}
-        </div>
-        <div className="text-[11px] leading-snug text-muted">
-          <span className="font-mono">{p.units.toLocaleString()}</span> in stock · sold <span className="font-mono">{p.sold_14d.toLocaleString()}</span> in 14 days
-        </div>
-        <div className="text-[11px] leading-snug text-muted">
-          {predicted && p.forecast ? (
-            <>
-              likely sells <span className="font-mono text-[#e7e7f0]">{rangeText(p.forecast)}</span> next 14 days
-            </>
-          ) : (
-            <span className="italic">too few sales to predict</span>
+    <PageShell crumbs={focused ? [{ label: "Products", href: "/products" }, { label: focused.title }] : [{ label: "Products" }]} fill>
+      <section className="relative min-h-0 flex-1 overflow-hidden" style={{ background: STAGE_BACKGROUND }} aria-label="Products world">
+        <div ref={host} className="absolute inset-0" />
+        <div
+          ref={tip}
+          className="pointer-events-none absolute z-[5] hidden whitespace-nowrap rounded-[9px] border border-edge bg-[#0f0f1c]/95 px-2.5 py-1.5 text-xs [&_.gone]:text-[#f87171] [&_.m]:text-[11px] [&_.m]:text-muted [&_b]:font-medium"
+        />
+        {(overview.error || pairs.error) && (
+          <div className="absolute left-4 top-20 z-[4]">
+            <LoadError message={overview.error ?? pairs.error ?? ""} retry={overview.error ? overview.retry : pairs.retry} />
+          </div>
+        )}
+        {failed && <p className="absolute inset-0 grid place-items-center text-muted">The 3D view could not start in this browser.</p>}
+        {!world && !overview.error && !pairs.error && <p className="absolute inset-0 grid place-items-center text-muted">Loading products…</p>}
+
+        {/* filter bar */}
+        <div className="absolute inset-x-4 top-3.5 z-[3] flex flex-wrap items-center gap-2">
+          <h1 className="mr-2.5 text-lg font-semibold">Products</h1>
+          <label className="flex w-[200px] items-center gap-1.5 rounded-lg border border-edge bg-[#0c0c18]/85 px-2.5 py-1">
+            <span aria-hidden="true">⌕</span>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search products" aria-label="Search products" className="w-full bg-transparent outline-none" />
+          </label>
+          <div className="flex overflow-hidden rounded-lg border border-edge bg-[#0c0c18]/85" role="group" aria-label="Sort">
+            {SORTS.map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setSort(k)}
+                aria-pressed={sort === k}
+                className={`whitespace-nowrap px-2.5 py-1 text-xs ${sort === k ? "bg-accent/[0.16] text-[#e7e7f0]" : "text-muted hover:text-[#c9c9d8]"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <select value={type} onChange={(e) => setType(e.target.value)} aria-label="Product type" className="rounded-lg border border-edge bg-[#0c0c18]/85 px-2 py-1 text-muted">
+            <option value="">All types</option>
+            {types.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+          {world && (
+            <span className="whitespace-nowrap text-xs text-[#55556d]">
+              {count} of {world.items.length} products
+            </span>
           )}
         </div>
-      </button>
-      <Sparkline values={p.sales_28d} width={SPARK_W} />
-      <StockVsRange width={cols.range} units={p.units} range={predicted ? p.forecast : null} color={color} dashed={stale} height={34} />
-      {sellout && (p.sellout ? <RunoutChip sellout={p.sellout} stale={stale} /> : <div />)}
-      <Link
-        href={`/products/${encodeURIComponent(p.id)}`}
-        onClick={(e) => e.stopPropagation()}
-        aria-label={`Open ${p.title}`}
-        className="justify-self-end rounded-md border border-edge px-1.5 py-0.5 text-[11px] text-muted hover:border-accent/50 hover:text-[#e7e7f0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        Open
-      </Link>
-    </div>
-  );
-}
+        <div className={`pointer-events-none absolute left-4 top-[52px] z-[3] text-[13px] text-[#c9c9d8] transition-opacity duration-300 ${focused ? "opacity-0" : "opacity-100"}`}>
+          {overview.data && <Answer products={products} sellout={vis.shown} />}
+          {vis.shown && vis.untested && <UntestedTag />}
+        </div>
+        <button
+          type="button"
+          onClick={() => setParams({ focus: null })}
+          tabIndex={focused ? 0 : -1}
+          className={`absolute left-4 top-[52px] z-[4] flex items-center gap-2 rounded-[9px] border border-accent/50 bg-[#14142a]/90 px-3 py-1.5 text-[13px] transition duration-300 ${
+            focused ? "opacity-100" : "pointer-events-none -translate-y-1.5 opacity-0"
+          }`}
+        >
+          ← Back to all products <kbd className="rounded border border-edge px-1 font-mono text-[11px] text-muted">Esc</kbd>
+        </button>
 
-function Legend({ sellout }: { sellout: boolean }) {
-  return (
-    <div className="mt-2.5 flex flex-wrap gap-4 text-[11px] text-muted">
-      <span>
-        <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm bg-white/30 align-middle" />
-        Stock now (white line)
-      </span>
-      <span>
-        <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm border border-accent bg-accent/35 align-middle" />
-        Likely sold in 14 days, line = middle{sellout ? ", colour = sell-out risk" : ""}
-      </span>
-      {sellout && (
-        <span>
-          <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm bg-[#f87171]/35 align-middle" />
-          Could run out: earliest to latest day (the top strip has the day-by-day chart)
-        </span>
-      )}
-      <span>
-        <i className="mr-1.5 inline-block h-2 w-3.5 rounded-sm border border-dashed border-[#55556d] align-middle" />
-        Stale range
-      </span>
-      <span>Click a product to see it in the galaxy; Open or double-click for its page</span>
-    </div>
-  );
-}
-
-export default function ProductsPage() {
-  const router = useRouter();
-  const overview = useLoad(() => getProductsOverview(DEV_MERCHANT), `products-overview:${DEV_MERCHANT}`);
-  const page = useLoad(() => getPageState(DEV_MERCHANT, "products"), `page:products:${DEV_MERCHANT}`);
-  const pairs = useLoad(() => getProductPairs(DEV_MERCHANT), `products-pairs:${DEV_MERCHANT}`);
-  const track = useLoad(() => getTrackRecord(DEV_MERCHANT), `track-record:${DEV_MERCHANT}`);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [galaxyOpen, setGalaxyOpen] = useState(false);
-  const closeGalaxy = useCallback(() => setGalaxyOpen(false), []);
-  const [ref, width] = useWidth<HTMLDivElement>();
-  const listRef = useRef<HTMLDivElement>(null);
-  const products = overview.data?.products ?? [];
-  const vis = selloutVisibility(products.map((p) => p.sellout));
-  const cols = columns(width, vis.shown);
-  const sorted = sortProducts(products, vis.shown);
-
-  // A product picked in the galaxy scrolls into view in the list.
-  useEffect(() => {
-    if (selected === null) return;
-    const row = listRef.current?.querySelector(`[data-product="${CSS.escape(selected)}"]`);
-    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [selected]);
-
-  const open = (id: string) => router.push(`/products/${encodeURIComponent(id)}`);
-
-  return (
-    <PageShell crumbs={[{ label: "Products" }]} fill>
-      <div className="flex-none px-6 pt-4">
-        <PageTitle title="Products" answer={overview.data ? <Answer products={products} sellout={vis.shown} /> : undefined} />
-        <div className="-mt-1 mb-3">
-          <InsightStrip
-            pairs={pairs}
-            track={track}
-            onOpenPairs={() => setGalaxyOpen(true)}
-            runout={vis.shown ? { untested: vis.untested, rows: products.flatMap((p) => (p.sellout ? [{ key: p.id, title: p.title, href: `/products/${encodeURIComponent(p.id)}`, sellout: p.sellout, stale: p.forecast_state === "stale" }] : [])) } : null}
+        <div className={`pointer-events-none absolute bottom-[76px] right-[50px] z-[2] text-right text-[11px] text-[#55556d] transition-opacity ${listOpen ? "opacity-0" : "opacity-100"}`}>
+          {hint}
+        </div>
+        {world && (
+          <ProductList
+            open={listOpen}
+            onToggle={() => setParams({ list: listOpen ? null : "1" })}
+            products={products}
+            order={order}
+            matches={matches}
+            focusId={focusId}
+            onFocus={(pid) => setParams({ focus: pid === focusId ? null : pid }, pid !== focusId)}
+            sellout={vis.shown}
+            untested={vis.untested}
           />
+        )}
+        {/* view switcher: the buttons play the morph animation */}
+        <div className="absolute bottom-4 left-1/2 z-[3] flex -translate-x-1/2 items-center gap-2 rounded-xl border border-edge bg-[#0c0c16]/85 p-1.5">
+          <button
+            type="button"
+            onClick={() => goView(viewIndex - 1)}
+            disabled={viewIndex === 0}
+            aria-label="Previous view"
+            className="h-[30px] w-[30px] rounded-full border border-edge bg-[#14142a] text-[15px] hover:border-accent disabled:opacity-30"
+          >
+            ‹
+          </button>
+          {VIEWS.map((v, i) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => goView(i)}
+              aria-pressed={viewIndex === i}
+              className={`rounded-lg px-3.5 py-1.5 text-[13px] transition-colors ${viewIndex === i ? "bg-accent/[0.16] text-[#e7e7f0]" : "text-muted hover:text-[#c9c9d8]"}`}
+            >
+              {v.label}
+              <small className="ml-1 text-[#55556d]">{v.sub}</small>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => goView(viewIndex + 1)}
+            disabled={viewIndex === 2}
+            aria-label="Next view"
+            className="h-[30px] w-[30px] rounded-full border border-edge bg-[#14142a] text-[15px] hover:border-accent disabled:opacity-30"
+          >
+            ›
+          </button>
         </div>
-      </div>
-      <div className="flex min-h-0 flex-1 border-t border-edge">
-        <div ref={listRef} className="min-w-0 flex-1 overflow-auto px-6 pb-8">
-          {overview.error && <LoadError message={overview.error} retry={overview.retry} />}
-          <div ref={ref} className="w-full">
-            {!overview.error && width > 0 && (
-              <div style={{ width: cols.total }}>
-                <div
-                  className="sticky top-0 z-[1] grid items-end border-b border-edge bg-[#080812] pb-1 pl-2 pt-3 text-[10px] text-muted"
-                  style={{ gridTemplateColumns: cols.template, columnGap: GAP }}
-                >
-                  <span>Product</span>
-                  <span>
-                    Sold per day, 28 days<span className="source-chip">Shopify</span>
-                  </span>
-                  <span>
-                    Stock <span className="text-[#e7e7f0]">|</span> against likely sold in 14 days
-                    <span className="source-chip">Shopify</span>
-                    <span className="source-chip">Kumo</span>
-                  </span>
-                  {vis.shown && (
-                    <span className="whitespace-nowrap">
-                      Could run out<span className="source-chip">Our math</span>
-                      {vis.untested && <UntestedTag />}
-                    </span>
-                  )}
-                  <span />
-                </div>
-                {!overview.data &&
-                  [0, 1, 2].map((i) => (
-                    <div key={i} className="border-b border-white/[0.07] py-3">
-                      <Skeleton className="h-3 w-48" />
-                    </div>
-                  ))}
-                {overview.data && products.length === 0 && <p className="py-4 text-muted">No products in Shopify yet.</p>}
-                {sorted.map((p) => (
-                  <ProductRow
-                    key={p.id}
-                    p={p}
-                    cols={cols}
-                    sellout={vis.shown}
-                    selected={selected === p.id}
-                    onSelect={() => setSelected((s) => (s === p.id ? s : p.id))}
-                    onOpen={() => open(p.id)}
-                  />
-                ))}
-                {overview.data && products.length > 0 && <Legend sellout={vis.shown} />}
-              </div>
-            )}
-          </div>
-          <SectionList compact skip={vis.shown ? ["sellout_risk"] : []} state={page.data} error={page.error} retry={page.retry} heading={<SubHeading>Not ready yet</SubHeading>} />
-        </div>
-        <GalaxyPanel
-          pairs={pairs}
-          track={track.data}
-          products={products}
-          selected={selected}
-          onSelect={setSelected}
-          onExpand={() => setGalaxyOpen(true)}
-        />
-      </div>
-      {pairs.data && (
-        <Modal open={galaxyOpen} onClose={closeGalaxy} title="Bought together" chips={<SourceChip source="shopify" />}>
-          <div className="absolute inset-0">
-            <BasketGalaxy pairs={pairs.data} products={products} focusId={selected} onFocus={setSelected} />
-          </div>
-        </Modal>
-      )}
+      </section>
     </PageShell>
+  );
+}
+
+/** Products: one 3D world (galaxy, skyline, 3D cards). Approved mockup: docs/mockups/products-world.html. */
+export default function ProductsPage() {
+  return (
+    <Suspense>
+      <World />
+    </Suspense>
   );
 }
