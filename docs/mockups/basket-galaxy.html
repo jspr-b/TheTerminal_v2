@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Terminal: bought together and track record (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1"></script>
+<style>
+:root{--water:#05050c;--panel:#0f0f1c;--edge:#22223a;--line:rgba(255,255,255,.07);--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--water);color:var(--text);font:13px/1.45 var(--sans);display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.top{height:50px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;border-bottom:1px solid var(--edge)}
+.top .brand{font-weight:600}.top .where{color:var(--muted)}
+.seg{display:flex;border:1px solid var(--edge);border-radius:8px;overflow:hidden;margin-left:12px}
+.seg button{padding:5px 12px;color:var(--muted)}.seg button.on{background:rgba(124,140,255,.16);color:var(--text)}
+.mock{margin-left:auto;font-size:11px;color:#fbbf24;border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+.view{flex:1;min-height:0;display:none}.view.on{display:flex}
+/* galaxy */
+.stage{flex:1;min-width:0;position:relative;background:#0a0a12;overflow:hidden}
+/* soft vignette in the app's colours: a little lighter and bluer in the middle, near black at the edges */
+.stage::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 70% at 50% 46%,#121427 0%,#0b0b15 55%,#06060b 100%)}
+#graph{z-index:1}
+#panel.fade>*{animation:fadein .35s ease both}@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--edge);border:1px solid var(--edge);border-radius:8px;overflow:hidden}
+.facts div{background:var(--panel);padding:8px 10px;display:flex;flex-direction:column;gap:2px}.facts span{font-size:11px;color:var(--muted)}.facts b{font-weight:500}.facts small{color:var(--muted);font-weight:400;margin-left:4px}
+.graphline{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;font-size:12px}.graphline i{font-style:normal;padding:3px 8px;border:1px solid var(--edge);border-radius:999px;color:var(--text)}.graphline em{font-style:normal;color:var(--dim)}
+.mv{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer}.mv b{font-weight:500}.mv:hover b{color:#fff}
+.lvl{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--edge);color:var(--muted)}.lvl.strong{color:#c3c9ff;border-color:rgba(124,140,255,.5)}.lvl.medium{color:#a9aed8}
+.time{position:absolute;left:18px;right:18px;bottom:16px;z-index:3;display:flex;align-items:center;gap:14px;padding:10px 14px 8px;border:1px solid var(--edge);border-radius:10px;background:rgba(12,12,22,.82);backdrop-filter:blur(6px)}
+#play{width:30px;height:30px;flex:none;border-radius:50%;border:1px solid var(--edge);color:var(--text);font-size:11px;background:#14142a}
+#play:hover{border-color:var(--accent)}
+.track{position:relative;flex:1;height:34px}
+.rail{position:absolute;left:0;right:0;top:9px;height:2px}
+.rail .past{position:absolute;left:0;width:66.667%;height:2px;background:#5a5f8c}
+.rail .ahead{position:absolute;left:66.667%;right:0;height:2px;background:repeating-linear-gradient(90deg,var(--accent) 0 5px,transparent 5px 9px)}
+.track input{position:absolute;left:-7px;right:-7px;width:calc(100% + 14px);top:0;height:20px;margin:0;background:transparent;-webkit-appearance:none;appearance:none}
+.track input::-webkit-slider-runnable-track{height:20px;background:transparent}
+.track input::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:3px;border-radius:50%;background:#fff;border:3px solid #0a0a12;box-shadow:0 0 0 1px #fff}
+.track input::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:#fff;border:3px solid #0a0a12}
+.marks{position:absolute;left:0;right:0;top:20px;font-size:11px;color:var(--muted)}.marks span{position:absolute;white-space:nowrap}
+.readout{flex:none;width:220px;font-size:12px;color:var(--muted);text-align:right}.readout b{color:var(--text);font-weight:500}
+.chip{white-space:nowrap}.chip.kumo{color:#c3c9ff;border-color:rgba(124,140,255,.45)}
+.spark .ax{fill:#6c6c86;font:10px "IBM Plex Sans",sans-serif}
+.dayline{margin:6px 0 4px;color:var(--muted);font-size:13px}.dayline b{color:var(--text);font-weight:500}
+.key{margin-top:16px;display:grid;gap:7px;font-size:12px;color:var(--muted)}.key span{color:var(--dim);margin-left:4px}
+.key i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:8px;vertical-align:-1px}
+.k-solid{background:#8f98d9}.k-ring{border:1.5px solid #8f98d9;box-shadow:0 0 0 2.5px #0f0f1c,0 0 0 3.5px rgba(143,152,217,.4)}
+.k-dots{background:radial-gradient(circle,#c9cdf0 1.5px,transparent 2px) 0 50%/5px 5px repeat-x;border-radius:0!important}
+.floorseg{position:absolute;right:16px;top:14px;z-index:2;display:flex;border:1px solid var(--edge);border-radius:7px;overflow:hidden;background:rgba(15,15,28,.85)}
+.floorseg button{padding:4px 11px;color:var(--muted);font-size:12px}.floorseg button.on{background:rgba(124,140,255,.14);color:var(--text)}
+
+#graph{position:absolute;inset:0}
+.stage .hint{position:absolute;right:18px;top:16px;color:var(--muted);font-size:12px;pointer-events:none;z-index:2}
+.stage .keys{z-index:2;position:absolute;left:18px;top:16px;display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);pointer-events:none}
+.stage .keys i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+aside{width:340px;flex:none;border-left:1px solid var(--edge);background:var(--panel);padding:18px;overflow:auto}
+h2{font-size:17px;margin:0 0 4px;font-weight:600}.sub{color:var(--muted);margin:0 0 16px}
+.sec{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px;display:flex;gap:8px;align-items:center}
+.chip{font-size:10px;border:1px solid var(--line);border-radius:4px;padding:0 5px;text-transform:none;letter-spacing:0}
+.pair{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.pair:hover b{color:#fff}.pair b{font-weight:500}.pair span{color:var(--muted);font-size:12px}
+.bar{grid-column:1/3;height:3px;border-radius:2px;background:rgba(255,255,255,.06)}.bar div{height:3px;border-radius:2px;background:var(--accent)}
+.back{color:var(--accent);font-size:12px;margin-bottom:12px}
+/* track record */
+#cards{flex:1;overflow:auto;padding:26px 28px 40px}
+#cards h1{font-size:20px;margin:0 0 4px;font-weight:600}#cards .lede{color:var(--muted);margin:0 0 22px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+.card{aspect-ratio:4/5;border-radius:18px;padding:22px;display:flex;flex-direction:column;position:relative;overflow:hidden;
+  background:#0f0f1c;border:1px solid var(--edge)}
+.card::before{content:'';position:absolute;left:22px;right:22px;top:0;height:2px;background:var(--accent);opacity:.9}
+.card.miss::before{background:var(--dim)}
+.card.miss{background:#0f0f1c}
+.card .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.card .name{font-size:19px;font-weight:600;margin-top:6px}
+.card .big{font-family:var(--mono);font-size:56px;line-height:1;margin-top:auto;letter-spacing:-.02em}
+.card .big small{font-size:14px;color:var(--muted);font-family:var(--sans);letter-spacing:0;margin-left:8px}
+.card svg{margin:18px 0 10px;overflow:visible}
+.card .verdict{font-size:15px;font-weight:500}.card .verdict.in{color:#a5afff}.card .verdict.out{color:var(--muted)}
+.card .foot{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.card.sum .big{font-size:84px}
+.dots{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.dots i{width:14px;height:14px;border-radius:50%;border:1.5px solid #a5afff}.dots i.on{background:#a5afff}
+.nlabel{font:500 11px "IBM Plex Sans",sans-serif;color:rgba(231,231,240,.82);white-space:nowrap;transform:translateY(4px);pointer-events:none;transition:opacity .25s;text-shadow:0 1px 3px #000}
+.nlabel.sel{color:#fff;font-weight:600}
+.tipbox{font:12px "IBM Plex Sans",sans-serif;padding:5px 8px;background:#16162a;border:1px solid #22223a;border-radius:6px;color:#e7e7f0}.tipbox span{color:#8d8da6}
+#tip{position:fixed;z-index:20;pointer-events:none;background:#16162a;border:1px solid var(--edge);border-radius:7px;padding:6px 9px;font-size:12px;display:none}
+</style>
+</head>
+<body>
+<div class="top"><span class="brand">The Terminal</span><span class="where">Products</span>
+  <div class="seg" role="group" aria-label="View"><button data-view="galaxy" class="on">Bought together</button><button data-view="record">Track record</button></div>
+  <span class="mock">Mockup: made-up numbers</span></div>
+
+<div class="view on" id="v-galaxy">
+  <div class="stage" id="stage"><div id="graph"></div><div class="keys" id="keys"></div><div class="hint">Drag to rotate · scroll to zoom · click a product</div>
+    <div class="time"><button id="play" aria-label="Play">▶</button>
+      <div class="track"><div class="rail"><i class="past"></i><i class="ahead"></i></div><input type="range" id="t" min="-28" max="14" step="0.01" value="0" aria-label="Day">
+        <div class="marks"><span style="left:0">28 days ago</span><span style="left:66.667%;transform:translateX(-50%)">Today</span><span style="right:0">+14 days</span></div></div>
+      <div class="readout" id="readout"></div></div></div>
+  <aside id="panel"></aside>
+</div>
+<div class="view" id="v-record"><div id="cards"></div></div>
+<div id="tip"></div>
+
+<script type="module">
+
+/* ---------- made-up shop: products, units sold in 28 days, shared orders ---------- */
+let seed = 5; const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+const TYPES = { Shirts: '#7c8cff', Bags: '#2dd4bf', Accessories: '#f0abfc', Outerwear: '#fbbf24', Knitwear: '#93c5fd', Art: '#fda4af' };
+const P = [['Linen Shirt','Shirts',262],['Oxford Shirt','Shirts',140],['Camp Collar Shirt','Shirts',96],['Cotton Tee','Shirts',310],['Canvas Tote','Bags',330],
+  ['Market Bag','Bags',88],['Weekender','Bags',41],['Wool Scarf','Accessories',75],['Leather Belt','Accessories',54],['Silk Tie','Accessories',38],['Card Holder','Accessories',120],
+  ['Bucket Hat','Accessories',66],['Denim Jacket','Outerwear',62],['Rain Shell','Outerwear',47],['Chore Coat','Outerwear',35],['Merino Crew','Knitwear',90],
+  ['Knit Beanie','Knitwear',110],['Cable Cardigan','Knitwear',44],['Limited Print','Art',6],['Poster Set','Art',28]];
+const nodes = P.map(([name, type, sold], id) => ({ id, name, type, sold, neighbors: [], links: [] }));
+const pairs = {};
+const bump = (a, b, n) => { if (a === b) return; const k = a < b ? `${a}-${b}` : `${b}-${a}`; pairs[k] = (pairs[k] || 0) + n; };
+bump(0, 4, 135); bump(3, 4, 64); bump(0, 8, 22); bump(12, 3, 30); bump(15, 16, 41); bump(7, 16, 37); bump(10, 8, 26); bump(5, 4, 12); bump(13, 11, 15); bump(18, 19, 3);
+bump(1, 9, 18); bump(14, 12, 9); bump(17, 7, 11); bump(6, 10, 7); bump(2, 11, 14);
+for (let i = 0; i < 40; i++) { const a = fl(rnd() * nodes.length), b = fl(rnd() * nodes.length); bump(a, b, 2 + fl(rnd() * 6)); }
+function fl(x) { return Math.floor(x); }
+const MIN_SHARED = 2; // same rule as the API: at least 2 shared orders
+const links = Object.entries(pairs).filter(([, n]) => n >= MIN_SHARED).map(([k, n]) => { const [s, t] = k.split('-').map(Number); return { source: s, target: t, orders: n }; });
+links.forEach(l => { const a = nodes[l.source], b = nodes[l.target]; a.neighbors.push(b); b.neighbors.push(a); a.links.push(l); b.links.push(l); });
+const maxOrders = Math.max(...links.map(l => l.orders));
+
+/* ---------- made-up daily history (Shopify) and 14-day forecast (Kumo), per product and per pair ---------- */
+const PAST = 28, AHEAD = 14;
+const week = d => 1 + 0.18 * Math.sin((d + 2) * 2 * Math.PI / 7);
+nodes.forEach(n => {
+  const r0 = n.sold / PAST, trend = (rnd() - 0.4) * 0.02;
+  n.trend = trend;
+  n.actual = [];  // index 0 = 28 days ago ... 27 = yesterday
+  for (let d = -PAST; d < 0; d++) n.actual.push(Math.max(0, Math.round(r0 * (1 + trend * d) * week(d) * (0.75 + 0.5 * rnd()))));
+  n.sold = n.actual.reduce((a, b) => a + b, 0);
+  n.fc = [];      // index 0 = tomorrow ... 13 = in 14 days: [low, likely, high] units that day
+  for (let d = 1; d <= AHEAD; d++) { const m = r0 * (1 + trend * d) * week(d), w = 0.22 + 0.035 * d;
+    n.fc.push([Math.max(0, Math.floor(m * (1 - w))), Math.round(m), Math.ceil(m * (1 + w))]); }
+});
+links.forEach(l => {
+  const a = nodes[l.source], b = nodes[l.target];
+  // Dots flow from the product usually bought first to the one bought next (made-up direction).
+  if (b.sold > a.sold) { l.source = b.id; l.target = a.id; }
+  const r0 = l.orders / PAST, tr = (a.trend + b.trend) / 2;
+  l.actual = []; for (let d = -PAST; d < 0; d++) l.actual.push(Math.max(0, r0 * (1 + tr * d) * week(d) * (0.7 + 0.6 * rnd())));
+  l.fc = []; for (let d = 1; d <= AHEAD; d++) { const m = r0 * (1 + tr * d) * week(d), w = 0.3 + 0.04 * d; l.fc.push([m * (1 - w), m, m * (1 + w)]); }
+});
+// Smoothed value on a slider day: past = what sold (7-day average), future = Kumo's range (3-day average).
+function at(x, day) {
+  const avg = (arr, a, b, f = v => v) => { a = Math.max(0, a); b = Math.min(arr.length - 1, b); let s = 0; for (let i = a; i <= b; i++) s += f(arr[i]); return s / (b - a + 1); };
+  if (day <= 0) { const i = day === 0 ? PAST - 4 : PAST + day; const m = avg(x.actual, i - 3, i + 3); return { lo: m, md: m, hi: m, fut: false }; }
+  const i = day - 1;
+  return { lo: avg(x.fc, i - 1, i + 1, v => v[0]), md: avg(x.fc, i - 1, i + 1, v => v[1]), hi: avg(x.fc, i - 1, i + 1, v => v[2]), fut: true };
+}
+nodes.forEach(n => {
+  n.orders = Math.round(n.sold * (0.8 + 0.1 * rnd()));
+  n.customers = Math.round(n.orders * (0.78 + 0.12 * rnd()));
+  n.repeat = Math.round(n.customers * (0.06 + 0.12 * rnd()));
+  n.returned = Math.round(n.sold * (0.01 + 0.05 * rnd()));
+  const last14 = n.actual.slice(14).reduce((a, b) => a + b, 0), prev14 = n.actual.slice(0, 14).reduce((a, b) => a + b, 0);
+  n.trendWord = last14 > prev14 * 1.08 ? 'Rising' : last14 < prev14 * 0.92 ? 'Falling' : 'Steady';
+  n.last14 = last14; n.prev14 = prev14;
+  const byDow = [0, 0, 0, 0, 0, 0, 0]; n.actual.forEach((v, i) => { byDow[new Date(Date.UTC(2026, 10, 18) + (i - 28) * 864e5).getUTCDay()] += v; });
+  n.busiest = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][byDow.indexOf(Math.max(...byDow))];
+});
+// How closely two products' daily sales go up and down together (Pearson over the 28 days), shown as a word.
+function corr(a, b) {
+  const n = a.length, ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n;
+  let x = 0, y = 0, z = 0; for (let i = 0; i < n; i++) { x += (a[i] - ma) * (b[i] - mb); y += (a[i] - ma) ** 2; z += (b[i] - mb) ** 2; }
+  return y && z ? x / Math.sqrt(y * z) : 0;
+}
+const corrWord = r => r > 0.6 ? 'strong' : r > 0.4 ? 'medium' : 'weak';
+let day = 0;          // shown day (moves smoothly)
+let target = 0;       // where the slider points
+// Values between two whole days blend smoothly, so nothing jumps.
+function atF(x, d) {
+  const a = Math.floor(d), b = Math.ceil(d), f = d - a;
+  if (a === b) return at(x, a);
+  const A = at(x, a), B = at(x, b);
+  return { lo: A.lo + (B.lo - A.lo) * f, md: A.md + (B.md - A.md) * f, hi: A.hi + (B.hi - A.hi) * f, fut: d > 0 };
+}
+
+/* ---------- bought together: a calm 3D map (3d-force-graph), own node objects so past and future can look different ---------- */
+const REV = String(window.__THREE__ || '186').replace(/\D/g, '');
+const { CSS2DRenderer, CSS2DObject } = await import(`https://esm.sh/three@0.${REV}.0/examples/jsm/renderers/CSS2DRenderer.js`);
+const T3 = await import(`https://esm.sh/three@0.${REV}.0`);
+const MUTED = { Shirts: '#8f98d9', Bags: '#7fbfb6', Accessories: '#c8a6cc', Outerwear: '#cdb27a', Knitwear: '#8fb0cf', Art: '#cf9aa3' };
+const ACCENT = '#7c8cff', DIM = '#20202f';
+const hiNodes = new Set(), hiLinks = new Set(); let focus = null, hover = null, Graph = null;
+const el = document.getElementById('graph');
+const topIds = new Set([...nodes].sort((a, b) => b.sold - a.sold).slice(0, 8).map(n => n.id));
+const lit = n => !focus || hiNodes.has(n);
+const labels = new Map();
+const rad = perDay => 2.6 * Math.cbrt(1 + perDay * PAST / 12);   // same size scale as "sold in 28 days"
+const maxPair = Math.max(...links.map(l => l.orders / PAST));
+const st = l => Math.min(1, atF(l, day).md / maxPair);
+const strength = l => l.orders / maxOrders;
+
+const sphereGeo = new T3.SphereGeometry(1, 28, 18);
+function nodeObject(n) {
+  const g = new T3.Group();
+  const mat = new T3.MeshLambertMaterial({ color: MUTED[n.type] });
+  const sphere = new T3.Mesh(sphereGeo, mat);
+  const d = document.createElement('div'); d.className = 'nlabel'; d.textContent = n.name; d.style.opacity = topIds.has(n.id) ? '1' : '0';
+  labels.set(n.id, d);
+  const lab = new CSS2DObject(d);
+  g.add(sphere, lab);
+  n.__v = { mat, sphere, lab };
+  paintNode(n); colorNode(n);
+  return g;
+}
+function paintNode(n) {      // size only: runs every frame
+  const v = n.__v; if (!v) return;
+  const r = rad(atF(n, day).md); n.__r = r;
+  v.sphere.scale.setScalar(r); v.lab.position.set(0, -(r + 4), 0);
+}
+const C = c => new T3.Color(c);
+function colorNode(n) {      // sets the colour to fade to; the frame loop does the fading
+  const v = n.__v; if (!v) return;
+  v.to = C(n === focus ? ACCENT : lit(n) ? MUTED[n.type] : DIM);
+}
+function styleLabels() {
+  for (const n of nodes) {
+    const d = labels.get(n.id); if (!d) continue;
+    d.style.opacity = (n === focus || n === hover || (focus ? hiNodes.has(n) : topIds.has(n.id))) ? '1' : '0';
+    d.classList.toggle('sel', n === focus);
+  }
+}
+const tipText = n => { const day = Math.round(target);
+  if (day > 0) { const [lo, md, hi] = n.fc[day - 1]; return `${n.name}<br><span>In ${day} day${day > 1 ? 's' : ''}: likely ${lo}–${hi} sold that day</span>`; }
+  if (day < 0) return `${n.name}<br><span>${-day} day${day < -1 ? 's' : ''} ago: ${n.actual[PAST + day]} sold</span>`;
+  return `${n.name}<br><span>${n.sold} sold in 28 days · ${n.links.length} pairings</span>`;
+};
+
+Graph = new ForceGraph3D(el, { controlType: 'orbit', extraRenderers: [new CSS2DRenderer()] })
+  .showNavInfo(false).backgroundColor('rgba(0,0,0,0)')
+  .graphData({ nodes, links })
+  .nodeThreeObject(nodeObject).nodeThreeObjectExtend(false)
+  .nodeLabel(n => `<div class="tipbox">${tipText(n)}</div>`)
+  .linkThreeObject(linkObject)
+  .linkPositionUpdate(placeLink)
+  .onNodeClick(select).onBackgroundClick(() => select(null))
+  .onNodeHover(n => { hover = n || null; el.style.cursor = n ? 'pointer' : ''; styleLabels(); })
+  .cooldownTime(3500);
+// Dots stay the same over time (no rebuilds): strong pairs, or the selected product's pairs. They flow from "bought first" to "bought next".
+const dotGeo = new T3.SphereGeometry(1, 10, 8);
+function makeDots(l) {
+  l.dots = [0, 0.5].map(o => { const m = new T3.Mesh(dotGeo, new T3.MeshBasicMaterial({ color: '#dfe2ff', transparent: true, opacity: 0, depthWrite: false })); m.__o = o; Graph.scene().add(m); return m; });
+  l.dotsNow = 0;
+}
+const cylGeo = new T3.CylinderGeometry(1, 1, 1, 10, 1, true); cylGeo.rotateX(Math.PI / 2);
+function linkObject(l) {
+  const m = new T3.Mesh(cylGeo, new T3.MeshLambertMaterial({ color: '#3a3d5c', transparent: true, opacity: 0.6, depthWrite: false }));
+  l.__m = m; colorLink(l); if (!l.dots) makeDots(l); return m;
+}
+function colorLink(l) {
+  if (!l.__m) return;
+  l.to = C(focus ? (hiLinks.has(l) ? ACCENT : '#17172a') : (strength(l) > 0.3 ? '#9aa0c8' : '#3a3d5c'));
+  l.dotsTo = focus ? (hiLinks.has(l) ? 1 : 0) : (strength(l) > 0.45 ? 0.85 : 0);
+}
+function placeLink(m, { start, end }, l) {
+  const dx = end.x - start.x, dy = end.y - start.y, dz = end.z - start.z, len = Math.hypot(dx, dy, dz) || 1;
+  const w = (0.25 + 2.4 * st(l)) / 2;
+  m.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, (start.z + end.z) / 2);
+  m.lookAt(end.x, end.y, end.z); m.scale.set(w, w, len);
+  return true;
+}
+Graph.d3Force('link').distance(l => 52 - 22 * strength(l));
+Graph.d3Force('charge').strength(-110);
+Graph.d3ReheatSimulation();
+setTimeout(() => { if (!focus) window.__recentre && window.__recentre(); }, 3800);
+const controls = Graph.controls();
+controls.autoRotate = true; controls.autoRotateSpeed = 0.45;
+let idle; el.addEventListener('pointerdown', () => { controls.autoRotate = false; clearTimeout(idle); idle = setTimeout(() => { if (!focus) controls.autoRotate = true; }, 8000); });
+const fitSize = () => Graph.width(el.clientWidth).height(el.clientHeight);
+addEventListener('resize', fitSize); fitSize();
+window.G = Graph;
+
+/* ---------- background: four floor styles to compare; the camera always stays above the floor ---------- */
+const FOG = 0x0b0b15;  // the vignette's mid colour, so far things fade into the page
+const FLOOR = { cx: 0, cz: 0, fy: -60, R: 120, W: 300 };
+const STYLES = { stage: 'Stage', shadows: 'Shadows', room: 'Room', spotlight: 'Spotlight' };
+let style = 'spotlight';  // chosen: a soft spotlight under the graph
+let applyStyle = () => {}, THREE = null;
+try {
+  THREE = await import(`https://esm.sh/three@0.${REV}.0`);
+  const scene = Graph.scene();
+  scene.fog = new THREE.Fog(FOG, 420, 1300);
+  const tex = (draw, size = 1024) => {
+    const c = document.createElement('canvas'); c.width = c.height = size; draw(c.getContext('2d'), size);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  };
+  const radial = (g, n, stops) => { const r = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); stops.forEach(([o, c]) => r.addColorStop(o, c)); return r; };
+  const flat = (texture) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, fog: false }));
+    m.rotation.x = -Math.PI / 2; m.renderOrder = -1; scene.add(m); return m;
+  };
+  // A. Stage: a round disc with a fine grid that fades out towards its rim.
+  const stage = flat(tex((g, n) => {
+    g.fillStyle = 'rgba(19,20,36,1)'; g.fillRect(0, 0, n, n);
+    g.strokeStyle = 'rgba(112,120,190,0.5)'; g.lineWidth = 1.4;
+    const cells = 26;
+    for (let i = 0; i <= cells; i++) { const q = i / cells * n; g.beginPath(); g.moveTo(q, 0); g.lineTo(q, n); g.moveTo(0, q); g.lineTo(n, q); g.stroke(); }
+    g.globalCompositeOperation = 'destination-in';
+    g.fillStyle = radial(g, n, [[0, 'rgba(0,0,0,1)'], [0.55, 'rgba(0,0,0,.85)'], [0.9, 'rgba(0,0,0,.15)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, n, n);
+  }));
+  // B. Shadows: no floor drawn, one soft shadow under the whole graph.
+  const pool = flat(tex((g, n) => { g.fillStyle = radial(g, n, [[0, 'rgba(0,0,0,.6)'], [0.5, 'rgba(0,0,0,.28)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, n, n); }, 256));
+  // D. Spotlight: a softly lit patch right under the graph, no lines.
+  const spot = flat(tex((g, n) => { g.fillStyle = radial(g, n, [[0, 'rgba(150,158,230,.22)'], [0.42, 'rgba(110,118,190,.10)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, n, n); }, 512));
+  // C. Room: a floor and two back walls with a fine grid; the walls stay on the far side as you turn.
+  const grid = () => { const h = new THREE.GridHelper(1, 14, 0x2c2e4c, 0x2c2e4c); h.material.transparent = true; h.material.opacity = 0.45; h.material.depthWrite = false; return h; };
+  const room = new THREE.Group(), rf = grid(), wx = grid(), wz = grid();
+  rf.material.opacity = 0.75;
+  wx.rotation.z = Math.PI / 2; wz.rotation.x = Math.PI / 2; room.add(rf, wx, wz); scene.add(room);
+  (function walls() {
+    if (room.visible) {
+      const cam = Graph.camera().position, h = FLOOR.W / 2;
+      const sx = Math.sign(cam.x - FLOOR.cx) || 1, sz = Math.sign(cam.z - FLOOR.cz) || 1;
+      wx.position.set(FLOOR.cx - sx * h, FLOOR.fy + h, FLOOR.cz); wz.position.set(FLOOR.cx, FLOOR.fy + h, FLOOR.cz - sz * h);
+    }
+    requestAnimationFrame(walls);
+  })();
+  // Every style keeps the small shadow under each product.
+  const softShadow = tex((g, n) => { g.fillStyle = radial(g, n, [[0, 'rgba(0,0,0,.9)'], [0.45, 'rgba(0,0,0,.45)'], [1, 'rgba(0,0,0,0)']]); g.fillRect(0, 0, n, n); }, 128);
+  const shadowMat = new THREE.MeshBasicMaterial({ map: softShadow, transparent: true, opacity: 0.5, depthWrite: false, fog: false });
+  const shadows = nodes.map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), shadowMat); m.rotation.x = -Math.PI / 2; m.renderOrder = 0; scene.add(m); return m; });
+  const size = n => rad(n.sold / PAST);  // today's size: keeps the floor height steady while the slider moves
+  function place() {
+    const { cx, cz, fy, R } = FLOOR;
+    stage.position.set(cx, fy, cz); stage.scale.set(R * 2.7, R * 2.7, 1);
+    pool.position.set(cx, fy, cz); pool.scale.set(R * 2.3, R * 2.3, 1);
+    spot.position.set(cx, fy, cz); spot.scale.set(R * 3.2, R * 3.2, 1);
+    FLOOR.W = R * 2.5; rf.scale.setScalar(FLOOR.W); wx.scale.setScalar(FLOOR.W); wz.scale.setScalar(FLOOR.W); rf.position.set(cx, fy, cz);
+  }
+  function ground() {
+    const ok = nodes.filter(n => Number.isFinite(n.x));
+    if (!ok.length) return;
+    FLOOR.fy = Math.min(...ok.map(n => n.y - size(n))) - 16;
+    FLOOR.cx = ok.reduce((a, n) => a + n.x, 0) / ok.length; FLOOR.cz = ok.reduce((a, n) => a + n.z, 0) / ok.length;
+    FLOOR.R = Math.max(...ok.map(n => Math.hypot(n.x - FLOOR.cx, n.z - FLOOR.cz))) + 24;
+    ok.forEach(n => { const sh = shadows[nodes.indexOf(n)]; sh.position.set(n.x, FLOOR.fy + 0.3, n.z); sh.scale.setScalar((n.__r || size(n)) * 1.9); });
+    place();
+  }
+  window.__ground = ground;
+  Graph.onEngineTick(ground);
+  applyStyle = kind => {
+    stage.visible = kind === 'stage'; pool.visible = kind === 'shadows'; room.visible = kind === 'room'; spot.visible = kind === 'spotlight';
+    shadowMat.opacity = kind === 'spotlight' ? 0.6 : 0.5;
+  };
+} catch (e) { console.warn('floor unavailable', e); }
+function setStyle(kind) {
+  style = kind; applyStyle(kind);
+  document.querySelectorAll('[data-floor]').forEach(b => b.classList.toggle('on', b.dataset.floor === kind));
+}
+setStyle(style);
+
+// Camera stays above the floor and at a sensible distance.
+controls.maxPolarAngle = 76 * Math.PI / 180;
+controls.minPolarAngle = 8 * Math.PI / 180;
+
+// Look slightly down onto the floor. zoomToFit keeps this direction and only moves closer or further.
+Graph.cameraPosition({ x: 0, y: 150, z: 360 }, { x: 0, y: 0, z: 0 });
+// Turn around the graph's own middle, not around the origin.
+function recentre(ms = 800) {
+  const ok = nodes.filter(n => Number.isFinite(n.x));
+  if (!ok.length) return;
+  const c = ['x', 'y', 'z'].map(k => ok.reduce((s, n) => s + n[k], 0) / ok.length);
+  const R = Math.max(...ok.map(n => Math.hypot(n.x - c[0], n.y - c[1], n.z - c[2]))) + 20;
+  c[1] -= R * 0.22;  // aim a little below the middle, so the floor is in the picture
+  const dist = R / Math.sin((Graph.camera().fov * Math.PI / 180) / 2) * 1.12;
+  const dir = { x: 0.34, y: 0.42, z: 0.84 };  // a little from the side and above
+  Graph.cameraPosition({ x: c[0] + dir.x * dist, y: c[1] + dir.y * dist, z: c[2] + dir.z * dist }, { x: c[0], y: c[1], z: c[2] }, ms);
+  Graph.controls().target.set(c[0], c[1], c[2]);
+  controls.minDistance = R * 0.9; controls.maxDistance = R * 5;
+}
+window.__recentre = recentre;
+Graph.onEngineStop(() => { window.__ground && window.__ground(); if (!focus) recentre(); });
+
+function refresh() { nodes.forEach(colorNode); links.forEach(colorLink); styleLabels(); }
+// Every frame: ease the shown day towards the slider, then resize spheres, lines and shadows.
+let lastWhole = null, playing = false, lastT = performance.now();
+const SPEED = (PAST + AHEAD) / 10;  // whole range in about 10 seconds
+(function frame(now) {
+  const dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;  // play speed stays right even at a low frame rate
+  if (playing) { target = Math.min(AHEAD, target + SPEED * dt); slider.value = target; if (target >= AHEAD) stop(); }
+  const before = day;
+  day += (target - day) * Math.min(1, dt * 9);
+  if (Math.abs(target - day) < 0.002) day = target;
+  // Fade colours and dots towards their targets, move the dots along their line.
+  const k = Math.min(1, dt * 6), tt = now / 1000;
+  for (const n of nodes) { const v = n.__v; if (v && v.to) v.mat.color.lerp(v.to, k); }
+  for (const l of links) {
+    if (!l.__m || !l.dots || l.source.x === undefined) continue;
+    if (l.to) l.__m.material.color.lerp(l.to, k);
+    l.dotsNow += (l.dotsTo - l.dotsNow) * k;
+    const a = l.source, b = l.target, w = 0.5 + 0.9 * st(l);
+    l.dots.forEach(m => { const f = (tt * 0.35 + m.__o) % 1; m.position.set(a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f, a.z + (b.z - a.z) * f);
+      m.scale.setScalar(w); m.material.opacity = l.dotsNow * Math.sin(Math.PI * f); m.visible = l.dotsNow > 0.01; });
+  }
+  if (day !== before || playing) {
+    nodes.forEach(paintNode);
+    links.forEach(l => l.__m && l.source.x !== undefined && placeLink(l.__m, { start: l.source, end: l.target }, l));
+    window.__ground && window.__ground();
+    const whole = Math.round(day);
+    if (whole !== lastWhole) { lastWhole = whole; readout(); panel(); }
+  }
+  requestAnimationFrame(frame);
+})(performance.now());
+function select(n) {
+  focus = n || null; hiNodes.clear(); hiLinks.clear();
+  if (n) {
+    hiNodes.add(n); n.neighbors.forEach(m => hiNodes.add(m)); n.links.forEach(l => hiLinks.add(l));
+    controls.autoRotate = false;
+    const cam = Graph.cameraPosition(), dx = cam.x - n.x, dz = cam.z - n.z, d = Math.max(1, Math.hypot(dx, dz));
+    Graph.cameraPosition({ x: n.x + dx / d * 230, y: n.y + 95, z: n.z + dz / d * 230 }, n, 1100);
+    controls.target.set(n.x, n.y, n.z);
+  } else { window.__recentre(900); controls.autoRotate = true; }
+  refresh(); panel(); const pe = document.getElementById('panel'); pe.classList.remove('fade'); void pe.offsetWidth; pe.classList.add('fade');
+}
+
+/* ---------- time slider: 28 days back (Shopify) to 14 days ahead (Kumo) ---------- */
+const TODAY = Date.UTC(2026, 10, 18);
+const dlabel = n => new Date(TODAY + n * 864e5).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const slider = document.getElementById('t'), playBtn = document.getElementById('play');
+function readout() {
+  const day = Math.round(window.__day());
+  const r = document.getElementById('readout');
+  r.innerHTML = day === 0 ? `<b>Today</b> · ${dlabel(0)} <span class="chip">Shopify</span>`
+    : day < 0 ? `<b>${-day} day${day < -1 ? 's' : ''} ago</b> · ${dlabel(day)} <span class="chip">Shopify</span>`
+    : `<b>In ${day} day${day > 1 ? 's' : ''}</b> · ${dlabel(day)} <span class="chip kumo">Kumo forecast</span>`;
+  document.getElementById('stage').classList.toggle('future', day > 0);
+}
+function setDay(t) { target = Math.max(-PAST, Math.min(AHEAD, t)); slider.value = target; }
+slider.addEventListener('input', () => { stop(); setDay(+slider.value); });
+function stop() { playing = false; playBtn.textContent = '▶'; playBtn.setAttribute('aria-label', 'Play'); }
+playBtn.onclick = () => {
+  if (playing) return stop();
+  if (target >= AHEAD) { target = day = -PAST; slider.value = target; }
+  playing = true; playBtn.textContent = '❚❚'; playBtn.setAttribute('aria-label', 'Pause');
+};
+
+/* ---------- side panel ---------- */
+const idOf = x => x.id ?? x;
+const other = (l, n) => nodes[idOf(l.source) === n.id ? idOf(l.target) : idOf(l.source)];
+const pairNext = l => { const lo = Math.floor(l.fc.reduce((s, v) => s + v[0], 0)), hi = Math.ceil(l.fc.reduce((s, v) => s + v[2], 0)); return [lo, hi]; };
+function row(title, value, frac, onclick) {
+  return `<div class="pair" onclick="${onclick}"><b>${title}</b><span class="num">${value}</span><div class="bar"><div style="width:${Math.min(100, 100 * frac)}%"></div></div></div>`;
+}
+function chart(n) {
+  const day = Math.round(window.__day());
+  const W = 300, H = 92, X = d => 6 + (W - 12) * (d + PAST) / (PAST + AHEAD), top = Math.max(...n.actual, ...n.fc.map(v => v[2])) * 1.1 || 1, Y = v => H - 16 - (H - 26) * v / top;
+  const past = n.actual.map((v, i) => `${X(i - PAST)},${Y(v)}`).join(' ');
+  const band = n.fc.map((v, i) => `${X(i + 1)},${Y(v[2])}`).join(' ') + ' ' + [...n.fc].reverse().map((v, i) => `${X(AHEAD - i)},${Y(v[0])}`).join(' ');
+  const mid = `${X(-1)},${Y(n.actual[PAST - 1])} ` + n.fc.map((v, i) => `${X(i + 1)},${Y(v[1])}`).join(' ');
+  const cur = day > 0 ? n.fc[day - 1][1] : day < 0 ? n.actual[PAST + day] : null;
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <polygon points="${band}" fill="#7c8cff" fill-opacity=".18"/>
+    <polyline points="${past}" fill="none" stroke="#c9cdf0" stroke-width="1.6"/>
+    <polyline points="${mid}" fill="none" stroke="#7c8cff" stroke-width="1.6" stroke-dasharray="3 3"/>
+    <line x1="${X(0)}" x2="${X(0)}" y1="6" y2="${H - 14}" stroke="rgba(255,255,255,.18)"/>
+    <line x1="${X(day)}" x2="${X(day)}" y1="6" y2="${H - 14}" stroke="#ffffff" stroke-width="1.2"/>
+    ${cur !== null ? `<circle cx="${X(day)}" cy="${Y(cur)}" r="3.5" fill="#fff"/>` : ''}
+    <text x="6" y="${H - 2}" class="ax">28 days ago</text><text x="${X(0)}" y="${H - 2}" class="ax" text-anchor="middle">Today</text><text x="${W - 6}" y="${H - 2}" class="ax" text-anchor="end">+14</text></svg>`;
+}
+function dayLine(n) {
+  const day = Math.round(window.__day());
+  if (day > 0) { const [lo, md, hi] = n.fc[day - 1]; return `<b>In ${day} day${day > 1 ? 's' : ''}:</b> likely ${lo}–${hi} sold that day, most likely ${md}.`; }
+  if (day < 0) return `<b>${-day} day${day < -1 ? 's' : ''} ago:</b> ${n.actual[PAST + day]} sold.`;
+  const [l14, h14] = [n.fc.reduce((s, v) => s + v[0], 0), n.fc.reduce((s, v) => s + v[2], 0)];
+  return `<b>Next 14 days:</b> likely ${l14}–${h14} sold.`;
+}
+function panel() {
+  const day = Math.round(window.__day());
+  const p = document.getElementById('panel'), fut = day > 0;
+  const src = fut ? '<span class="chip kumo">Kumo · not tested yet</span>' : '<span class="chip">Shopify</span>';
+  if (!focus) {
+    const top = [...links].sort((a, b) => (fut ? pairNext(b)[1] - pairNext(a)[1] : b.orders - a.orders)).slice(0, 7);
+    const maxHi = Math.max(...links.map(l => pairNext(l)[1]));
+    p.innerHTML = `<h2>Bought together</h2><p class="sub">${fut ? 'What Kumo expects for the next 14 days. Dots flow from the product usually bought first to the one bought next.' : 'Products that end up in the same order. The thicker the line, the more often.'}</p>
+      <div class="sec">${fut ? 'Next 14 days' : 'Last 28 days'} ${src}</div>
+      ${top.map(l => { const a = nodes[idOf(l.source)], b = nodes[idOf(l.target)], [lo, hi] = pairNext(l);
+        return row(`${a.name} ${fut ? '→' : '+'} ${b.name}`, fut ? `${lo}–${hi} orders` : `${l.orders} orders`, fut ? hi / maxHi : l.orders / maxOrders, `pick(${a.id})`); }).join('')}
+      <div class="key"><div><i class="k-solid"></i>Size = sold per day, or likely per day after today</div><div><i class="k-dots"></i>Dots flow from bought first to bought next</div></div>
+      <p class="sub" style="margin-top:14px;font-size:12px">Size = units sold per day. Pairs need at least ${MIN_SHARED} shared orders. Nothing past 14 days.</p>`;
+    return;
+  }
+  const n = focus;
+  const list = n.links.map(l => ({ o: other(l, n), l, next: idOf(l.source) === n.id })).sort((a, b) => fut ? pairNext(b.l)[1] - pairNext(a.l)[1] : b.l.orders - a.l.orders);
+  const maxHi = Math.max(1, ...list.map(x => pairNext(x.l)[1]));
+  p.innerHTML = `<button class="back" onclick="pick(null)">← Whole shop</button><h2>${n.name}</h2><p class="sub">${n.type} · <span class="num">${n.sold}</span> sold in the last 28 days</p>
+    <div class="sec">Sold per day <span class="chip">Shopify</span><span class="chip kumo">Kumo</span></div>
+    ${chart(n)}<p class="dayline">${dayLine(n)}</p>
+    <div class="sec">What Kumo gets to see <span class="chip">Shopify</span></div>
+    <div class="facts">
+      <div><span>Orders</span><b class="num">${n.orders}</b></div><div><span>Customers</span><b class="num">${n.customers}</b></div>
+      <div><span>Bought again</span><b class="num">${n.repeat}</b></div><div><span>Returned</span><b class="num">${n.returned}</b></div>
+      <div><span>Last 2 weeks</span><b>${n.trendWord} <small class="num">${n.prev14} → ${n.last14}</small></b></div><div><span>Busiest day</span><b>${n.busiest}</b></div>
+    </div>
+    <div class="graphline"><i>${n.orders} orders</i><em>→</em><i>${n.customers} customers</i><em>→</em><i>${n.links.length} other products</i></div>
+    <p class="sub" style="font-size:12px;margin:6px 0 0">Kumo learns from these linked tables, not from names, emails or addresses.</p>
+    ${(() => { const mv = nodes.filter(o => o !== n).map(o => ({ o, r: corr(n.actual, o.actual) })).filter(x => x.r > 0.3).sort((a, b) => b.r - a.r).slice(0, 4);
+      return `<div class="sec">Sells on the same days as <span class="chip">Shopify</span></div>${mv.length ? mv.map(x => `<div class="mv" onclick="pick(${x.o.id})"><b>${x.o.name}</b><span class="lvl ${corrWord(x.r)}">${corrWord(x.r)}</span></div>`).join('') : '<div class="sub">No product moves with it.</div>'}`; })()}
+    <div class="sec">${fut ? 'Bought with it, next 14 days' : 'Bought with it, last 28 days'} ${src}</div>
+    ${list.length ? list.map(x => { const [lo, hi] = pairNext(x.l);
+      return row(fut ? `${x.next ? 'Then ' : 'First '}${x.o.name}` : x.o.name, fut ? `${lo}–${hi} orders` : `${x.l.orders} orders`, fut ? hi / maxHi : x.l.orders / maxOrders, `pick(${x.o.id})`); }).join('') : '<div class="sub">Not enough shared orders yet.</div>'}
+    <p class="sub" style="margin-top:16px;font-size:12px">On the product page this view opens on ${n.name}.</p>`;
+}
+window.__day = () => target;
+window.pick = id => select(id === null ? null : nodes[id]);
+document.getElementById('keys').innerHTML = Object.entries(MUTED).map(([t, c]) => `<span><i style="background:${c}"></i>${t}</span>`).join('');
+setDay(0); readout(); panel();
+
+/* ---------- track record cards ---------- */
+const DAY0 = Date.UTC(2026, 10, 17);
+const dname = n => new Date(DAY0 + n * 864e5).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const REC = [['Linen Shirt', 94, 127, 160, 131], ['Canvas Tote', 108, 146, 186, 179], ['Cotton Tee', 120, 158, 205, 214], ['Wool Scarf', 29, 41, 58, 37],
+  ['Leather Belt', 17, 24, 35, 22], ['Denim Jacket', 21, 30, 44, 26], ['Merino Crew', 30, 44, 63, 49], ['Knit Beanie', 33, 47, 66, 58],
+  ['Card Holder', 38, 55, 77, 70], ['Rain Shell', 14, 21, 31, 12], ['Oxford Shirt', 42, 60, 84, 66], ['Bucket Hat', 19, 28, 40, 31]];
+function bandSvg(lo, md, hi, act, w = 226) {
+  const max = Math.max(hi, act) * 1.15, x = v => 4 + (w - 8) * v / max, inside = act >= lo && act <= hi;
+  return `<svg width="${w}" height="46"><line x1="4" x2="${w - 4}" y1="22" y2="22" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
+    <rect x="${x(lo)}" y="12" width="${x(hi) - x(lo)}" height="20" rx="10" fill="#7c8cff" fill-opacity=".25" stroke="#7c8cff"/>
+    <line x1="${x(md)}" x2="${x(md)}" y1="12" y2="32" stroke="#7c8cff" stroke-width="2"/>
+    <circle cx="${x(act)}" cy="22" r="7" fill="${inside ? '#ffffff' : '#0f0f1c'}" stroke="#ffffff" stroke-width="2.5"/>
+    <text x="${x(lo)}" y="46" fill="#8d8da6" font-size="11" font-family="IBM Plex Mono">${lo}</text><text x="${x(hi)}" y="46" fill="#8d8da6" font-size="11" font-family="IBM Plex Mono" text-anchor="end">${hi}</text></svg>`;
+}
+const held = REC.filter(r => r[4] >= r[1] && r[4] <= r[3]).length;
+document.getElementById('cards').innerHTML = `<h1>Track record</h1>
+  <p class="lede">Every 14 days, what Kumo said next to what really sold. Made to be shared: each card is a square-ish image. A white dot inside the band means Kumo's range held.</p>
+  <div class="grid">
+   <div class="card sum"><span class="k">${dname(-14)} – ${dname(-1)}</span><span class="name">Kumo's ranges held for</span>
+     <div class="big">${held}<small>of ${REC.length} products</small></div>
+     <div class="dots">${REC.map(r => `<i class="${r[4] >= r[1] && r[4] <= r[3] ? 'on' : ''}" title="${r[0]}"></i>`).join('')}</div>
+     <div class="foot"><span>The Terminal · Kumo + Shopify</span><span>Made-up shop</span></div></div>
+   ${REC.map(([name, lo, md, hi, act]) => { const inside = act >= lo && act <= hi, word = inside ? 'Inside Kumo\'s range' : act > hi ? 'Sold more than Kumo\'s range' : 'Sold less than Kumo\'s range';
+     return `<div class="card ${inside ? '' : 'miss'}"><span class="k">Kumo said, ${dname(-14)}</span><span class="name">${name}</span>
+       <div class="big">${act}<small>sold in 14 days</small></div>${bandSvg(lo, md, hi, act)}
+       <span class="verdict ${inside ? 'in' : 'out'}">${word}</span>
+       <div class="foot"><span class="num">Range ${lo}–${hi}</span><span>Kumo + Shopify</span></div></div>`; }).join('')}
+  </div>`;
+
+/* ---------- view switch ---------- */
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('on', x === b));
+  document.getElementById('v-galaxy').classList.toggle('on', b.dataset.view === 'galaxy');
+  document.getElementById('v-record').classList.toggle('on', b.dataset.view === 'record');
+  if (b.dataset.view === 'galaxy' && Graph) fitSize();
+});
+
+/* ---------- embed mode, used by the product stage mockup: ?embed=1&view=galaxy|record&focus=<product name> ---------- */
+const Q = new URLSearchParams(location.search);
+if (Q.has('embed')) { document.querySelector('.top').style.display = 'none'; fitSize(); }
+if (Q.get('view') === 'record') document.querySelector('[data-view="record"]').click();
+const focusName = Q.get('focus');
+if (focusName) { const n = nodes.find(x => x.name === focusName); if (n) setTimeout(() => select(n), 3200); }
+</script>
+</body>
+</html>

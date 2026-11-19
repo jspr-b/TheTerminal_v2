@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Terminal: product page as a stage (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080812;--panel:#0f0f1c;--edge:#22223a;--line:rgba(255,255,255,.07);--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;
+  --red:#f87171;--amber:#fbbf24;--green:#34d399;--sans:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--sans);display:flex;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:left}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.chip{font-size:10px;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:0 5px;color:var(--muted);white-space:nowrap;margin-left:6px;font-weight:400;letter-spacing:0;text-transform:none}
+.untested{font-size:10px;border:1px solid rgba(251,191,36,.4);color:var(--amber);border-radius:4px;padding:0 4px;margin-left:5px;white-space:nowrap}
+.sample{font-size:10px;border:1px dashed rgba(255,255,255,.4);border-radius:4px;padding:0 5px;color:var(--text);background:repeating-linear-gradient(135deg,rgba(255,255,255,.08) 0 4px,transparent 4px 8px);white-space:nowrap;margin-left:6px}
+.mock{font-size:11px;color:var(--amber);border:1px solid rgba(251,191,36,.35);border-radius:99px;padding:2px 9px}
+/* app sidebar, as today */
+nav{width:220px;flex:none;border-right:1px solid var(--edge);padding:16px 12px;display:flex;flex-direction:column;gap:4px}
+nav .brand{font-weight:600;padding:0 8px 14px}
+nav a{display:block;padding:7px 10px;border-radius:7px;color:var(--muted);text-decoration:none}nav a.on{background:rgba(124,140,255,.12);color:var(--text)}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crumbs{height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--edge);color:var(--muted)}
+.crumbs b{color:var(--text);font-weight:500}.crumbs .mock{margin-left:auto}
+.head{flex:none;padding:14px 22px 0;display:flex;align-items:flex-end;gap:24px}
+.head h1{font-size:22px;margin:0;font-weight:600}.head .type{color:var(--muted);margin-left:8px;font-size:13px;font-weight:400}
+.head p{margin:4px 0 0;color:#c9c9d8;font-size:14px}.head p b{color:var(--text);font-weight:500}
+/* stat ribbon: the five answers in one line */
+.ribbon{flex:none;display:flex;margin:14px 22px 12px;border:1px solid var(--edge);border-radius:12px;overflow:hidden;background:var(--panel)}
+.ribbon > div{flex:1;padding:9px 14px;border-right:1px solid var(--line);min-width:0}.ribbon > div:last-child{border:0}
+.ribbon .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center}
+.ribbon .v{font-family:var(--mono);font-size:20px;line-height:1.25;margin-top:2px}.ribbon .v small{font-family:var(--sans);font-size:12px;color:var(--muted);margin-left:6px}
+.body{flex:1;min-height:0;display:flex;border-top:1px solid var(--edge)}
+/* the stage */
+.stage{flex:1;min-width:0;position:relative;background:radial-gradient(75% 75% at 50% 42%,#121427 0%,#0a0a14 55%,#05050b 100%);overflow:hidden}
+.stage canvas{display:block}
+.view{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .35s}.view.on{opacity:1;pointer-events:auto}
+.stitle{position:absolute;left:20px;top:16px;z-index:3;pointer-events:none}
+.stitle .t{font-size:15px;font-weight:600;display:flex;align-items:center}.stitle .s{color:var(--muted);font-size:12px;margin-top:2px;max-width:520px}
+.legend{position:absolute;right:20px;top:18px;z-index:3;display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);pointer-events:none;text-align:right}
+.legend i{display:inline-block;width:12px;height:9px;border-radius:2px;margin-left:8px;vertical-align:-1px}
+.scrub{position:absolute;left:20px;right:20px;bottom:16px;z-index:3;display:flex;align-items:center;gap:16px;padding:10px 14px;border:1px solid var(--edge);border-radius:10px;background:rgba(12,12,22,.84);backdrop-filter:blur(6px)}
+.scrub input{flex:1;accent-color:var(--accent)}
+.scrub .ro{width:330px;flex:none;font-size:12px;color:var(--muted)}.scrub .ro b{color:var(--text);font-weight:500}
+.scrub .lab{font-size:11px;color:var(--muted);white-space:nowrap}
+#futures,#track{position:absolute;inset:0}
+.emb{position:absolute;inset:0;width:100%;height:100%;border:0;background:#0a0a12}
+#sky canvas{cursor:grab}#sky.hover canvas{cursor:pointer}
+.rowlab{position:absolute;z-index:2;font-size:11px;color:var(--muted);pointer-events:none;white-space:nowrap;transform:translate(-100%,-50%);padding-right:8px}
+.info{position:absolute;z-index:4;width:300px;padding:12px 14px;border:1px solid var(--edge);border-radius:12px;background:rgba(15,15,28,.94);backdrop-filter:blur(8px);box-shadow:0 12px 40px rgba(0,0,0,.5);display:none}
+.info.on{display:block}
+.info .x{position:absolute;right:10px;top:8px;color:var(--muted);font-size:16px;line-height:1}
+.info .kick{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center}
+.info .big{font-family:var(--mono);font-size:26px;line-height:1.2;margin:4px 0 2px}.info .big small{font-family:var(--sans);font-size:12px;color:var(--muted);margin-left:6px}
+.info .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.info .row b{color:var(--text);font-weight:500;font-family:var(--mono)}
+.info .note{margin-top:8px;font-size:12px;color:#c9c9d8}
+.info .warn{color:var(--red)}
+.hintc{position:absolute;right:20px;bottom:84px;z-index:3;font-size:11px;color:var(--dim);pointer-events:none}
+/* the rail: instruments, not cards */
+.rail{transition:width .3s;width:372px;flex:none;border-left:1px solid var(--edge);background:var(--panel);display:flex;flex-direction:column;overflow:auto}
+.rhead{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:14px 16px 6px}
+.inst{display:grid;grid-template-columns:104px 1fr;gap:12px;align-items:center;padding:11px 16px;border-left:2px solid transparent;border-bottom:1px solid var(--line);transition:background .15s}
+.inst:hover{background:rgba(255,255,255,.025)}.inst.on{border-left-color:var(--accent);background:rgba(124,140,255,.07)}
+.inst svg{display:block}
+.inst .n{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;flex-wrap:wrap;gap:2px 0}
+.inst .l{margin-top:3px;font-size:13px;color:#c9c9d8;line-height:1.35}.inst .l b{color:var(--text);font-weight:500}
+.soon{padding:4px 16px 16px}
+/* slim rail while an embedded view needs the room: thumbnails only */
+.rail.slim{width:136px}.rail.slim .inst{grid-template-columns:104px;padding:12px 14px}.rail.slim .inst > div,.rail.slim .soon,.rail.slim .notready,.rail.slim .rhead{display:none}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;margin-top:6px;border:1px dashed rgba(255,255,255,.18);border-radius:8px;font-size:12px;color:#c9c9d8}
+.srow b{font-weight:500;color:var(--text)}.srow .w{color:var(--muted);font-size:11px}
+.notready{padding:0 16px 18px;color:var(--dim);font-size:11px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="brand">The Terminal</div>
+  <a>Command</a><a class="on">Products</a><a>Customers</a><a>Ads</a><a>Support</a><a>Money</a><a>Connections</a>
+</nav>
+<main>
+  <div class="crumbs">Products <span>/</span> <b>Canvas Tote</b><span class="mock">Mockup · made-up demo data</span></div>
+  <div class="head">
+    <div>
+      <h1>Canvas Tote<span class="type">Bags</span></h1>
+      <p>In the next 14 days it will likely sell <b class="num">110–190</b> (sold 158 in the last 14). It could run out from <b>Sun 22 Nov</b>.<span class="untested">untested</span></p>
+    </div>
+  </div>
+  <div class="ribbon">
+    <div><div class="k">In stock<span class="chip">Shopify</span></div><div class="v">40<small>2 locations</small></div></div>
+    <div><div class="k">Likely sells, 14 days<span class="chip">Kumo</span></div><div class="v">110–190<small>middle 150</small></div></div>
+    <div><div class="k">Runs out<span class="chip">Our math</span><span class="untested">untested</span></div><div class="v" style="color:var(--red)">day 3–6<small>likely day 4</small></div></div>
+    <div><div class="k">Last check<span class="chip">Kumo</span><span class="chip">Shopify</span></div><div class="v">inside<small>3 of 4 held</small></div></div>
+    <div><div class="k">Most bought with<span class="chip">Shopify</span></div><div class="v" style="font-family:var(--sans);font-size:15px;line-height:1.6;font-weight:500">Linen Shirt<small class="num">83 orders</small></div></div>
+  </div>
+  <div class="body">
+    <section class="stage" id="stage">
+      <!-- 1. skyline -->
+      <div class="view on" data-view="skyline">
+        <div id="sky" style="position:absolute;inset:0"></div>
+        <div class="rowlab" id="lab0"></div><div class="rowlab" id="lab1"></div>
+        <div class="info" id="info" role="dialog" aria-label="Tower detail"></div>
+        <div class="hintc">Click a tower to see that day · drag to turn</div>
+        <div class="stitle"><div class="t">Sales skyline<span class="chip">Shopify</span><span class="chip">Kumo</span></div>
+          <div class="s">Each tower is one day at one location. Solid: what sold, last 28 days. Glass: Kumo's likely range for the next 14 days, cap = top of the range.</div></div>
+        <div class="legend"><span>sold<i style="background:#c9cbe0"></i></span><span>likely (middle)<i style="background:rgba(124,140,255,.75)"></i></span><span>top of range<i style="border:1px solid #9aa6ff"></i></span><span>stock gone<i style="background:rgba(248,113,113,.55)"></i></span></div>
+      </div>
+      <!-- 2 + 3. the approved basket-galaxy mockup, embedded (bought together and track record) -->
+      <div class="view" data-view="orbit"><iframe class="emb" data-src="basket-galaxy.html?embed=1&view=galaxy&focus=Canvas%20Tote" title="Bought together"></iframe></div>
+      <div class="view" data-view="track"><iframe class="emb" data-src="basket-galaxy.html?embed=1&view=record" title="Track record"></iframe></div>
+      <div class="scrub" id="scrub">
+        <span class="lab">today</span>
+        <input id="day" type="range" min="1" max="14" value="4" aria-label="Day after today">
+        <span class="lab">day 14</span>
+        <div class="ro" id="ro"></div>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <div class="rhead">Look closer: pick one for the stage</div>
+      <button class="inst on" data-go="skyline" title="Sales skyline">
+        <svg id="m-sky" width="104" height="46"></svg>
+        <div><div class="n">Sales skyline<span class="chip">Shopify</span><span class="chip">Kumo</span></div><div class="l">Sold <b class="num">158</b> last 14 days, likely <b class="num">110–190</b> next 14</div></div>
+      </button>
+      <button class="inst" data-go="orbit" title="Bought together">
+        <svg id="m-orb" width="104" height="46"></svg>
+        <div><div class="n">Bought together<span class="chip">Shopify</span></div><div class="l">Most with <b>Linen Shirt</b>, then Cotton Tee</div></div>
+      </button>
+      <button class="inst" data-go="track" title="Track record">
+        <svg id="m-trk" width="104" height="46"></svg>
+        <div><div class="n">Track record<span class="chip">Kumo</span><span class="chip">Shopify</span></div><div class="l">Kumo's range held <b>3 of 4</b> times</div></div>
+      </button>
+
+      <div class="rhead" style="margin-top:8px">Not connected yet<span class="sample">sample data</span></div>
+      <div class="soon">
+        <div class="srow"><span>Units likely to come back</span><span><b class="num">6–14</b> <span class="w">refunds import</span></span></div>
+        <div class="srow"><span>Best ad platform</span><span><b>Meta</b> <span class="w">connect Ads</span></span></div>
+        <div class="srow"><span>What customers buy next</span><span><b>Linen Shirt</b> <span class="w">new Kumo question</span></span></div>
+        <div class="srow"><span>Sudden change in sales</span><span><b>none</b> <span class="w">needs GPU</span></span></div>
+      </div>
+      <div class="notready">Sample rows: made-up numbers to judge the design, shown in local development only.</div>
+    </aside>
+  </div>
+</main>
+
+<script type="module">
+// ---------- made-up demo data, matching the demo shop ----------
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+const STOCK = 40, LOW = 110, MID = 150, HIGH = 190;
+const LOCS = [{ name: "Warehouse", share: .68, stock: 28 }, { name: "Amsterdam store", share: .32, stock: 12 }];
+const today = new Date(); today.setHours(12, 0, 0, 0);
+const dayName = n => { const d = new Date(today); d.setDate(d.getDate() + n); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); };
+const weekly = n => { const wd = (today.getDay() + n + 7 * 10) % 7; return wd === 0 || wd === 6 ? 1.45 : wd === 5 ? 1.2 : .85; };
+const past = LOCS.map(l => Array.from({ length: 28 }, (_, i) => Math.round(11.3 * l.share * weekly(i - 28) * (.7 + rnd() * .6))));
+const ahead = Array.from({ length: 14 }, (_, i) => { const w = weekly(i + 1); return { lo: LOW / 14 * w * .93, mid: MID / 14 * w * .93, hi: HIGH / 14 * w * .93 }; });
+// stock left after each day at low/mid/high
+const left = which => { let s = STOCK; return ahead.map(d => (s -= d[which], s)); };
+const leftHi = left("hi"), leftMid = left("mid"), leftLo = left("lo");
+const outDay = arr => { const i = arr.findIndex(v => v <= 0); return i < 0 ? null : i + 1; };
+
+// ---------- stage switching ----------
+let current = "skyline";
+const views = [...document.querySelectorAll(".view")];
+function go(v) {
+  current = v;
+  views.forEach(x => x.classList.toggle("on", x.dataset.view === v));
+  document.querySelectorAll(".inst").forEach(b => b.classList.toggle("on", b.dataset.go === v));
+  document.getElementById("scrub").style.display = v === "skyline" ? "flex" : "none";
+  document.querySelector(".rail").classList.toggle("slim", v !== "skyline");
+  // load an embedded view the first time it is shown (keeps WebGL contexts down)
+  const f = document.querySelector(`.view[data-view="${v}"] iframe`);
+  if (f && !f.src) f.src = f.dataset.src;
+  readout();
+}
+document.querySelectorAll(".inst").forEach(b => b.addEventListener("click", () => go(b.dataset.go)));
+const dayInput = document.getElementById("day");
+dayInput.addEventListener("input", () => { readout(); highlight(); });
+function readout() {
+  const d = +dayInput.value, a = ahead[d - 1];
+  const lo = Math.max(0, Math.round(leftHi[d - 1])), hi = Math.max(0, Math.round(leftLo[d - 1]));
+  document.getElementById("ro").innerHTML = `<b>${dayName(d)}</b> · likely sells <b class="num">${Math.round(a.lo)}–${Math.round(a.hi)}</b> · stock left <b class="num">${lo === hi ? lo : lo + "–" + hi}</b>`;
+}
+
+// ---------- 1. skyline (three.js) ----------
+const THREE = await import("https://esm.sh/three@0.170.0");
+const { OrbitControls } = await import("https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js");
+const sky = document.getElementById("sky");
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+sky.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0b0b15, 80, 170);  // the vignette's mid colour, so far things fade into the page
+const camera = new THREE.PerspectiveCamera(36, 1, .1, 500);
+camera.position.set(-22, 30, 66);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(-1, 3, 0); controls.enableDamping = true; controls.autoRotate = true; controls.autoRotateSpeed = .35;
+controls.minPolarAngle = 8 * Math.PI / 180; controls.maxPolarAngle = 76 * Math.PI / 180;  // camera stays above the floor controls.enablePan = false; controls.minDistance = 35; controls.maxDistance = 110;
+scene.add(new THREE.AmbientLight(0xffffff, .55));
+const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(-30, 60, 40); scene.add(key);
+const rim = new THREE.DirectionalLight(0x7c8cff, .9); rim.position.set(40, 20, -40); scene.add(rim);
+const H = .55, STEP = 1.05, ROWGAP = 4.2;
+const xOf = i => (i - 28) * STEP + 6;           // i: 0..41, today between 27 and 28
+const zOf = r => (r - .5) * ROWGAP;
+// Floor: the "Spotlight" style chosen for the basket galaxy: a softly lit patch, no lines,
+// and a soft shadow under every tower.
+const tex = (draw, n = 512) => { const c = document.createElement("canvas"); c.width = c.height = n; draw(c.getContext("2d"), n); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+const radial = (g, n, stops) => { const q = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); stops.forEach(([o, c]) => q.addColorStop(o, c)); return q; };
+const spot = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex((g, n) => { g.fillStyle = radial(g, n, [[0, "rgba(150,158,230,.24)"], [.42, "rgba(110,118,190,.10)"], [1, "rgba(0,0,0,0)"]]); g.fillRect(0, 0, n, n); }), transparent: true, depthWrite: false, fog: false }));
+spot.rotation.x = -Math.PI / 2; spot.scale.set(95, 60, 1); spot.renderOrder = -1; scene.add(spot);
+const shadowTex = tex((g, n) => { g.fillStyle = radial(g, n, [[0, "rgba(0,0,0,.9)"], [.45, "rgba(0,0,0,.45)"], [1, "rgba(0,0,0,0)"]]); g.fillRect(0, 0, n, n); }, 128);
+const shadowMat = new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity: .6, depthWrite: false, fog: false });
+const shadow = (x, z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), shadowMat); m.rotation.x = -Math.PI / 2; m.position.set(x, .02, z); scene.add(m); };
+// stock left per location after each day, at the middle / top / bottom of the range
+const locLeft = (loc, which) => { let st = loc.stock; return ahead.map(d => (st -= d[which] * loc.share, st)); };
+const box = new THREE.BoxGeometry(.78, 1, .78);
+const solid = new THREE.MeshStandardMaterial({ color: 0xc9cbe0, roughness: .55, metalness: .1 });
+const glass = new THREE.MeshPhysicalMaterial({ color: 0x7c8cff, transparent: true, opacity: .55, roughness: .15, metalness: 0, emissive: 0x1c2266 });
+const capMat = new THREE.LineBasicMaterial({ color: 0x9aa6ff, transparent: true, opacity: .8 });
+const towers = [];
+LOCS.forEach((loc, r) => {
+  const mids = locLeft(loc, "mid");
+  past[r].forEach((u, i) => {
+    const m = new THREE.Mesh(box, solid.clone()); const h = Math.max(.05, u * H);
+    m.scale.y = h; m.position.set(xOf(i), h / 2, zOf(r)); scene.add(m); shadow(xOf(i), zOf(r));
+    towers.push({ kind: "past", r, i, day: i - 28, units: u, m });
+  });
+  ahead.forEach((a, k) => {
+    const i = 28 + k, mid = a.mid * loc.share * H, hi = a.hi * loc.share * H;
+    // after this location's likely run-out day the glass turns red: those sales can't happen without stock
+    const gone = mids[k] <= 0;
+    shadow(xOf(i), zOf(r));
+    const m = new THREE.Mesh(box, gone ? new THREE.MeshPhysicalMaterial({ color: 0xf87171, transparent: true, opacity: .28, roughness: .2, emissive: 0x2a0b0b }) : glass.clone());
+    m.scale.y = mid; m.position.set(xOf(i), mid / 2, zOf(r)); scene.add(m);
+    const cap = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.78, hi, .78)), capMat);
+    cap.position.set(xOf(i), hi / 2, zOf(r)); scene.add(cap);
+    towers.push({ kind: "ahead", r, i, k, day: k + 1, a, m, gone, cap });
+  });
+});
+// today plane
+const todayPlane = new THREE.Mesh(new THREE.PlaneGeometry(ROWGAP * 2.4, 16), new THREE.MeshBasicMaterial({ color: 0x7c8cff, transparent: true, opacity: .07, side: THREE.DoubleSide, depthWrite: false }));
+todayPlane.rotation.y = Math.PI / 2; todayPlane.position.set((xOf(27) + xOf(28)) / 2, 8, 0); scene.add(todayPlane);
+// selected day marker
+const marker = new THREE.Mesh(new THREE.PlaneGeometry(.95, ROWGAP * 2.3), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .16, depthWrite: false }));
+marker.rotation.x = -Math.PI / 2; marker.position.y = .02; scene.add(marker);
+let picked = null, hovered = null;
+// white outline around the picked tower
+const outline = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(.9, 1, .9)), new THREE.LineBasicMaterial({ color: 0xffffff }));
+outline.visible = false; scene.add(outline);
+towers.forEach(t => { if (t.cap) t.cap.material = t.cap.material.clone(); });
+function highlight() {
+  const d = +dayInput.value;
+  marker.position.x = xOf(27 + d);
+  towers.forEach(t => {
+    const isPick = picked === t, dim = !!picked && !isPick;
+    if (t.kind === "ahead") {
+      t.m.material.opacity = isPick ? .95 : dim ? .18 : t.k === d - 1 ? .85 : t.gone ? .28 : .5;
+      t.m.material.emissiveIntensity = isPick ? 3 : t.k === d - 1 ? 2.2 : hovered === t ? 1.8 : 1;
+      t.cap.material.opacity = dim ? .25 : .8;
+    } else {
+      t.m.material.transparent = true;
+      t.m.material.opacity = dim ? .25 : 1;
+      t.m.material.emissive.setHex(isPick ? 0x6b6f9a : hovered === t ? 0x2a2c44 : 0x000000);
+    }
+  });
+  outline.visible = !!picked;
+  if (picked) { outline.scale.set(1, picked.m.scale.y, 1); outline.position.copy(picked.m.position); }
+}
+
+// ---------- clicking a tower ----------
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const meshes = towers.map(t => t.m);
+function hit(ev) {
+  const b = renderer.domElement.getBoundingClientRect();
+  ptr.set(((ev.clientX - b.left) / b.width) * 2 - 1, -((ev.clientY - b.top) / b.height) * 2 + 1);
+  ray.setFromCamera(ptr, camera);
+  const h = ray.intersectObjects(meshes)[0];
+  return h ? towers.find(t => t.m === h.object) : null;
+}
+let down = null;
+renderer.domElement.addEventListener("pointerdown", e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener("pointerup", e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;  // a drag turns the view
+  pick(hit(e));
+});
+renderer.domElement.addEventListener("pointermove", e => {
+  const t = hit(e); if (t !== hovered) { hovered = t; sky.classList.toggle("hover", !!t); highlight(); }
+});
+const info = document.getElementById("info");
+let flyTarget = null;
+function pick(t) {
+  picked = t;
+  controls.autoRotate = !t;
+  if (t && t.kind === "ahead") dayInput.value = t.day;
+  flyTarget = t ? new THREE.Vector3(t.m.position.x, 3, t.m.position.z) : new THREE.Vector3(-1, 3, 0);
+  highlight(); readout(); showInfo();
+}
+const fmt = v => Math.round(v);
+function showInfo() {
+  const t = picked;
+  if (!t) { info.classList.remove("on"); return; }
+  const loc = LOCS[t.r];
+  let h = `<button class="x" aria-label="Close">×</button>`;
+  if (t.kind === "past") {
+    const both = past[0][t.i] + past[1][t.i];
+    const sameWd = past[t.r].filter((_, j) => (j - t.i) % 7 === 0);
+    const avg = sameWd.reduce((a, b) => a + b, 0) / sameWd.length;
+    h += `<div class="kick">${loc.name} · ${dayName(t.day)}<span class="chip">Shopify</span></div>
+      <div class="big">${t.units}<small>sold</small></div>
+      <div class="row"><span>All locations that day</span><b>${both}</b></div>
+      <div class="row"><span>Usual for this weekday here</span><b>${Math.round(avg * .8)}–${Math.round(avg * 1.2)}</b></div>
+      <div class="note">Exact sales from Shopify orders, cancelled orders left out.</div>`;
+  } else {
+    const sh = loc.share, a = t.a;
+    const lo = Math.max(0, fmt(locLeft(loc, "hi")[t.k])), hi = Math.max(0, fmt(locLeft(loc, "lo")[t.k]));
+    h += `<div class="kick">${loc.name} · ${dayName(t.day)}<span class="chip">Kumo</span></div>
+      <div class="big">${fmt(a.lo * sh)}–${Math.max(fmt(a.hi * sh), fmt(a.lo * sh) + 1)}<small>likely sold</small></div>
+      <div class="row"><span>Middle of the range</span><b>${fmt(a.mid * sh)}</b></div>
+      <div class="row"><span>Stock left here after this day <span class="untested">untested</span></span><b>${lo === hi ? lo : lo + "–" + hi}</b></div>
+      <div class="row"><span>In stock here today</span><b>${loc.stock}</b></div>
+      ${t.gone ? `<div class="note warn">By this day the stock here is likely gone, so these sales can only happen with more stock.</div>`
+               : `<div class="note">Kumo gives one range for all 14 days; it is spread over the days by weekday here.</div>`}`;
+  }
+  info.innerHTML = h; info.classList.add("on");
+  info.querySelector(".x").onclick = () => pick(null);
+}
+addEventListener("keydown", e => { if (e.key === "Escape" && picked) pick(null); });
+// keep the card next to its tower, and the row labels at the start of each row
+const v3 = new THREE.Vector3();
+function project(x, y, z) { v3.set(x, y, z).project(camera); const b = sky.getBoundingClientRect(); return [(v3.x + 1) / 2 * b.width, (1 - v3.y) / 2 * b.height, v3.z]; }
+function overlays() {
+  const b = sky.getBoundingClientRect();
+  LOCS.forEach((l, r) => { const [x, y, z] = project(xOf(0) - .8, .2, zOf(r)); const el = document.getElementById("lab" + r); el.textContent = l.name; el.style.left = x + "px"; el.style.top = y + "px"; el.style.display = z < 1 ? "block" : "none"; });
+  if (picked) {
+    const [x, y] = project(picked.m.position.x, picked.m.scale.y + .6, picked.m.position.z);
+    const w = 300, hgt = info.offsetHeight;
+    info.style.left = Math.min(b.width - w - 16, Math.max(16, x + 24)) + "px";
+    info.style.top = Math.min(b.height - hgt - 90, Math.max(70, y - hgt / 2)) + "px";
+  }
+}
+function size() { const r = sky.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); renderer.domElement.style.width = r.width + "px"; renderer.domElement.style.height = r.height + "px"; camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); }
+new ResizeObserver(size).observe(sky); size(); highlight(); readout();
+(function loop() {
+  if (flyTarget) { controls.target.lerp(flyTarget, .08); if (controls.target.distanceTo(flyTarget) < .05) flyTarget = null; }
+  controls.update(); renderer.render(scene, camera); overlays(); requestAnimationFrame(loop);
+})();
+window.__pick = (r, i) => pick(towers.find(t => t.r === r && t.i === i) || null);
+
+// ---------- rail thumbnails ----------
+const svg = (id, inner) => document.getElementById(id).innerHTML = inner;
+{ // skyline silhouette
+  let h = ""; const all = past[0].map((v, i) => v + past[1][i]);
+  all.slice(-18).forEach((v, i) => h += `<rect x="${i * 4}" y="${44 - v * 2}" width="3" height="${v * 2}" fill="#c9cbe0" opacity=".75"/>`);
+  ahead.slice(0, 8).forEach((a, i) => { const gone = i + 1 > outDay(leftMid); h += `<rect x="${72 + i * 4}" y="${44 - a.mid * 2}" width="3" height="${a.mid * 2}" fill="${gone ? "#f87171" : "#7c8cff"}" opacity=".7"/><rect x="${72 + i * 4}" y="${44 - a.hi * 2}" width="3" height="${a.hi * 2}" fill="none" stroke="#9aa6ff" stroke-width=".5"/>`; });
+  svg("m-sky", h);
+}
+{ // orbit
+  const pts = [[52, 23, 6, "#fff"], [20, 10, 4, "#8fa2ff"], [86, 12, 4.5, "#8fa2ff"], [16, 36, 3, "#7fd6c2"], [88, 36, 2.5, "#f2a6d8"], [52, 42, 2.5, "#f2a6d8"]];
+  let h = pts.slice(1).map(([x, y], i) => `<line x1="52" y1="23" x2="${x}" y2="${y}" stroke="#7c8cff" stroke-width="${[2.4, 2.1, .9, .7, .6][i]}" opacity=".7"/>`).join("");
+  h += pts.map(([x, y, r, c]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`).join("");
+  svg("m-orb", h);
+}
+{ // track
+  const checks = [{ lo: 96, hi: 165, actual: 141 }, { lo: 102, hi: 172, actual: 180 }, { lo: 104, hi: 176, actual: 152 }, { lo: 108, hi: 184, actual: 158 }];
+  let h = ""; checks.forEach((c, i) => { const y = 6 + i * 11, x = v => (v - 80) / 120 * 104, held = c.actual >= c.lo && c.actual <= c.hi;
+    h += `<rect x="${x(c.lo)}" y="${y - 3}" width="${x(c.hi) - x(c.lo)}" height="7" rx="2" fill="rgba(124,140,255,.3)"/><circle cx="${x(c.actual)}" cy="${y + .5}" r="2.6" fill="#fff"/>`; });
+  svg("m-trk", h);
+}
+
+window.__go = go;
+</script>
+</body>
+</html>

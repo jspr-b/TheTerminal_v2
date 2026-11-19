@@ -14,6 +14,8 @@ Every lookup by id also checks the merchant (404 when the id belongs to someone 
 | `GET /merchants/{m}/command` | Command, Products | `CommandView` (locations, stock, 14-day ranges) |
 | `GET /merchants/{m}/heatmap/{layer}` | Command | `Heatmap`; layer = orders, demand, returns, delays, first_time |
 | `GET /merchants/{m}/products/overview` | Products | `ProductsOverview` |
+| `GET /merchants/{m}/products/pairs` | Products, Product page | `ProductPairs` (basket galaxy) |
+| `GET /merchants/{m}/products/track-record` | Products | `TrackRecord` |
 | `GET /merchants/{m}/products/{pid}` | Product page | `ProductDetail` |
 | `GET /merchants/{m}/customers/regions` | Customers | `CustomerRegions` |
 | `GET /merchants/{m}/connections` | Connections | `Connections` |
@@ -80,6 +82,23 @@ interface ProductsOverview {
     forecast: { lower: number; value: number; upper: number; generated_at: string } | null;
     sellout: Sellout | null;           // null when there is no forecast
   }[];
+}
+
+// GET /merchants/{m}/products/pairs  (basket galaxy; exact Shopify data, no prediction)
+interface ProductPairs {
+  days: number;                 // window: last 90 days of orders (cancelled excluded)
+  min_orders: number;           // a pair needs at least this many shared orders (2)
+  nodes: { id: string; title: string; product_type: string | null; sold: number }[];  // sold = units in the window
+  links: { source: string; target: string; orders: number }[];   // source/target = product ids; each pair once
+}
+
+// GET /merchants/{m}/products/track-record  (latest Kumo demand run whose 14 days are over)
+interface TrackRecord {
+  window_start: string | null;  // when that run's range was made; null = no finished window yet
+  window_end: string | null;    // window_start + 14 days
+  checked: number; inside: number; above: number; below: number;   // counts of products
+  products: { product_id: string; title: string; lower: number; value: number; upper: number; actual: number;
+              result: "inside" | "above" | "below" }[];  // above = sold more than the top of the range; sorted: above, below, inside, then by how far off
 }
 
 // ProductDetail (GET /merchants/{m}/products/{pid}) also has:
