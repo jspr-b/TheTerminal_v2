@@ -1,4 +1,5 @@
-"""Shopify records into our tables. Customer rows get city level only: no names, emails or street addresses."""
+"""Shopify records into our tables. No names, emails or phones. Customer rows get city level only;
+orders keep their shipping address and map position for the merchant's own map (never sent to NVIDIA)."""
 import logging
 from uuid import UUID
 
@@ -46,7 +47,7 @@ def customer_row(r: dict) -> dict:
 
 def order_row(r: dict, customer_id: UUID | None) -> dict:
     ship = r.get("shipping_address") or {}
-    return {**_base(r), **_stamps(r), "customer_id": customer_id, "ordered_at": r.get("processed_at") or r["created_at"], "financial_status": r.get("financial_status"), "fulfillment_status": r.get("fulfillment_status"), "total": r.get("total_price"), "discounts": r.get("total_discounts"), "currency": r.get("currency"), "source_name": r.get("source_name"), "landing_site": r.get("landing_site"), "referring_site": r.get("referring_site"), "ship_city": ship.get("city"), "ship_province": ship.get("province"), "ship_country": ship.get("country"), "cancelled_at": r.get("cancelled_at")}
+    return {**_base(r), **_stamps(r), "customer_id": customer_id, "ordered_at": r.get("processed_at") or r["created_at"], "financial_status": r.get("financial_status"), "fulfillment_status": r.get("fulfillment_status"), "total": r.get("total_price"), "discounts": r.get("total_discounts"), "currency": r.get("currency"), "source_name": r.get("source_name"), "landing_site": r.get("landing_site"), "referring_site": r.get("referring_site"), "ship_city": ship.get("city"), "ship_province": ship.get("province"), "ship_country": ship.get("country"), "ship_address1": ship.get("address1"), "ship_address2": ship.get("address2"), "ship_zip": ship.get("zip"), "ship_lat": ship.get("latitude"), "ship_lng": ship.get("longitude"), "cancelled_at": r.get("cancelled_at")}
 
 
 def line_row(li: dict, order_id: UUID, ordered_at: str, products: dict, variants: dict) -> dict:

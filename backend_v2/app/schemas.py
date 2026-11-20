@@ -81,6 +81,102 @@ class CommandOut(BaseModel):
     products: list[CommandProduct]
 
 
+class CityProduct(BaseModel):
+    product_id: UUID
+    title: str
+    units: int
+
+
+class CustomerAddress(BaseModel):
+    street: str | None
+    street2: str | None
+    zip: str | None
+    city: str | None
+    country: str | None
+    orders: int
+    last_order: datetime
+
+
+class SameAddressAccount(BaseModel):
+    """Another customer account of this shop that shipped to one of the same addresses."""
+    id: UUID
+    code: str
+    orders: int
+    spent: float | None
+    last_order: datetime
+
+
+class CustomerCard(BaseModel):
+    """One customer, from their orders. No name, email or phone: `code` is a short id. Addresses are for the merchant only."""
+    id: UUID
+    code: str
+    orders: int
+    currency: str | None         # None when their orders use more than one currency
+    spent: float | None          # None when their orders use more than one currency
+    average_order: float | None
+    first_order: datetime
+    last_order: datetime
+    discount_orders: int
+    ship_cities: list[str]
+    top_products: list[CityProduct]
+    refunds: int
+    refunded: float
+    weekly: list[int]            # orders per week, last 12 weeks, oldest first
+    addresses: list[CustomerAddress]
+    same_address: list[SameAddressAccount]
+
+
+class CustomerDot(BaseModel):
+    """One customer at one shipping address on the map. lat/lng are Shopify's; None means show it at the city."""
+    id: UUID
+    code: str
+    city: str
+    country: str | None
+    street: str | None
+    zip: str | None
+    lat: float | None
+    lng: float | None
+    orders: int                  # their orders to this address in the last `days`
+    last_order: datetime
+
+
+class CustomerDots(BaseModel):
+    days: int
+    dots: list[CustomerDot]
+
+
+class CityCustomers(BaseModel):
+    """A city on Command: its last `days` and a card per customer who ordered there."""
+    city: str
+    country: str | None
+    days: int
+    orders: int
+    customers: int
+    guest_orders: int
+    returning: int               # customers who had also ordered before these days
+    average_order: float | None
+    currency: str | None
+    top_products: list[CityProduct]
+    cards: list[CustomerCard]
+
+
+class StorePeriod(BaseModel):
+    orders: int
+    revenue: float | None  # None when orders use more than one currency: never added up across currencies
+    units: int
+    customers: int
+    countries: int
+
+
+class StoreSummary(BaseModel):
+    """Exact Shopify numbers for 'Your store' on Command."""
+    days: int
+    currency: str | None
+    current: StorePeriod
+    previous: StorePeriod
+    daily_units: list[int]  # oldest first, 2 x days long; the last value is today
+
+
 SectionStateName = Literal["ready", "not_connected", "needs_gpu", "blocked", "not_built"]
 
 

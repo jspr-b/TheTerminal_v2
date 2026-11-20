@@ -20,7 +20,7 @@ from .kumo import KumoClient
 from .kumo_local import LocalKumo
 from .nango import NangoClient, RecordSource
 from .ontology import MIN_SHARED_ORDERS, PAIR_DAYS, OntologyService
-from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductPairs, ProductsOverview, TrackRecord
+from .schemas import CommandOut, Connections, CustomerRegions, ForecastStarted, Health, ImportJobOut, ImportStarted, LocationOut, Heatmap, PageState, ProductDetail, ProductOut, ProductPairs, ProductsOverview, StoreSummary, TrackRecord, CityCustomers, CustomerDots, CustomerCard
 
 logging.basicConfig(level=logging.INFO)
 bearer = HTTPBearer(auto_error=False)
@@ -91,6 +91,15 @@ async def health() -> Health:
 @app.get("/merchants/{merchant_id}/command", response_model=CommandOut)
 async def command(merchant: Merchant, svc: Service) -> dict:
     return await svc.command_view(merchant)
+
+
+SUMMARY_DAYS = 14
+
+
+@app.get("/merchants/{merchant_id}/command/summary", response_model=StoreSummary)
+async def command_summary(merchant: Merchant, svc: Service) -> dict:
+    """'Your store' on Command: orders, revenue, units, customers. Exact Shopify data, no forecasts."""
+    return await svc.store_summary(merchant, SUMMARY_DAYS)
 
 
 @app.get("/merchants/{merchant_id}/products", response_model=list[ProductOut])
@@ -183,12 +192,33 @@ async def product_detail(product_id: UUID, merchant: Merchant, svc: Service) -> 
     return found
 
 
+@app.get("/merchants/{merchant_id}/customers/dots", response_model=CustomerDots)
+async def customer_dots(merchant: Merchant, svc: Service) -> dict:
+    """Command: one green dot per customer per shipping address, last 14 days. Merchant only, never sent to NVIDIA."""
+    return {"days": HEATMAP_DAYS, "dots": await svc.customer_dots(merchant, HEATMAP_DAYS)}
+
+
+@app.get("/merchants/{merchant_id}/customers/city", response_model=CityCustomers)
+async def customers_in_city(merchant: Merchant, svc: Service, city: str, country: str | None = None) -> dict:
+    """A city's last 14 days and a card per customer: order facts and shipping addresses; no names, emails or phones."""
+    return await svc.customers_in_city(merchant, city, country, HEATMAP_DAYS)
+
+
 @app.get("/merchants/{merchant_id}/customers/regions", response_model=CustomerRegions)
 async def customer_regions(merchant: Merchant, svc: Service) -> dict:
     """Customers as groups per city. Small cities are counted in `hidden`, never listed."""
     rows = await svc.customers_per_city(merchant)
     shown = [r for r in rows if r["customers"] >= MIN_COUNT]
     return {"min_count": MIN_COUNT, "hidden": sum(r["customers"] for r in rows if r["customers"] < MIN_COUNT), "regions": shown}
+
+
+@app.get("/merchants/{merchant_id}/customers/{customer_id}", response_model=CustomerCard)
+async def customer_card(merchant: Merchant, svc: Service, customer_id: UUID) -> dict:
+    """What a green dot opens: one customer of this shop, from their orders. No names, emails or phones."""
+    card = await svc.customer_card(merchant, customer_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return card
 
 
 @app.get("/merchants/{merchant_id}/connections", response_model=Connections)

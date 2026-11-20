@@ -18,6 +18,11 @@ MIN_SHARED_ORDERS = 2  # "bought in the same order" needs at least this many sha
 PAIR_DAYS = 90  # bought together: the product page and the basket galaxy use the same window
 
 
+def _code(customer_id: UUID) -> str:
+    """A short, stable label for a customer instead of a name."""
+    return str(customer_id).replace("-", "")[:6].upper()
+
+
 class OntologyService:
     def __init__(self, pool: AsyncConnectionPool):
         self.pool = pool
@@ -194,6 +199,162 @@ class OntologyService:
                 "forecast_state": ("stale" if stale else "forecast") if forecast else "too_few_sales",
                 "sold_14d": sum(s["units"] for s in sales[-14:]), "sellout": sellout(units, forecast) if forecast else None,
                 "by_variant": variants, "bought_together": together, "track_record": record}
+
+    async def customer_dots(self, merchant_id: UUID, days: int) -> list[dict]:
+        """One map dot per customer per shipping address in the last `days`. For the merchant's own map, never for NVIDIA."""
+        rows = await self._all(
+            """select customer_id, ship_city as city, ship_country as country, min(ship_address1) as street, min(ship_zip) as zip,
+                      avg(ship_lat)::float as lat, avg(ship_lng)::float as lng, count(*)::int as orders, max(ordered_at) as last_order
+               from orders where merchant_id = %(m)s and cancelled_at is null and customer_id is not null and ship_city is not null
+                 and ordered_at >= now() - make_interval(days => %(d)s)
+               group by customer_id, ship_city, ship_country, lower(btrim(coalesce(ship_address1, ''))), lower(replace(coalesce(ship_zip, ''), ' ', ''))
+               order by city, last_order desc, customer_id""",
+            {"m": merchant_id, "d": days})
+        return [{"id": r["customer_id"], "code": _code(r["customer_id"]), "city": r["city"], "country": r["country"], "street": r["street"],
+                 "zip": r["zip"], "lat": r["lat"], "lng": r["lng"], "orders": r["orders"], "last_order": r["last_order"]} for r in rows]
+
+    async def _customer_cards(self, merchant_id: UUID, ids: list[UUID]) -> list[dict]:
+        """A card per customer from all their orders in this shop: facts, shipping addresses, other accounts at those addresses."""
+        q = {"m": merchant_id, "ids": ids}
+        # all of each customer's orders (any city, any time), this merchant only
+        stats = await self._all(
+            """select o.customer_id, count(*)::int as orders, sum(o.total)::float as spent, count(distinct o.currency)::int as currencies, min(o.currency) as currency,
+                      min(o.ordered_at) as first_order, max(o.ordered_at) as last_order,
+                      count(*) filter (where coalesce(o.discounts, 0) > 0)::int as discount_orders,
+                      array_remove(array_agg(distinct o.ship_city), null) as ship_cities
+               from orders o where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+               group by o.customer_id""", q)
+        prods = await self._all(
+            """select o.customer_id, pr.id as product_id, pr.title, sum(l.quantity)::int as units
+               from orders o join order_lines l on l.merchant_id = o.merchant_id and l.order_id = o.id
+               join products pr on pr.merchant_id = l.merchant_id and pr.id = l.product_id
+               where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+               group by o.customer_id, pr.id, pr.title""", q)
+        refunds = await self._all(
+            """select o.customer_id, count(r.id)::int as refunds, coalesce(sum(r.amount), 0)::float as refunded
+               from refunds r join orders o on o.merchant_id = r.merchant_id and o.id = r.order_id
+               where r.merchant_id = %(m)s and o.customer_id = any(%(ids)s) group by o.customer_id""", q)
+        weeks = await self._all(
+            """select o.customer_id, floor(extract(epoch from now() - o.ordered_at) / 604800)::int as ago, count(*)::int as n
+               from orders o where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+                 and o.ordered_at >= now() - interval '84 days'
+               group by 1, 2""", q)
+        # an address is its street and postcode, compared without case, outer spaces or spaces in the postcode
+        key = "lower(btrim(coalesce({t}.ship_address1, ''))) || '|' || lower(replace(coalesce({t}.ship_zip, ''), ' ', ''))"
+        addrs = await self._all(
+            f"""select o.customer_id, min(o.ship_address1) as street, min(o.ship_address2) as street2, min(o.ship_zip) as zip,
+                       min(o.ship_city) as city, min(o.ship_country) as country, count(*)::int as orders, max(o.ordered_at) as last_order
+                from orders o where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+                  and nullif(btrim(coalesce(o.ship_address1, '')), '') is not null
+                group by o.customer_id, {key.format(t='o')} order by orders desc, last_order desc""", q)
+        twins = await self._all(
+            f"""with mine as (select distinct o.customer_id, {key.format(t='o')} as k from orders o
+                              where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+                                and nullif(btrim(coalesce(o.ship_address1, '')), '') is not null),
+                     other as (select x.customer_id, {key.format(t='x')} as k, x.total, x.currency, x.ordered_at from orders x
+                               where x.merchant_id = %(m)s and x.cancelled_at is null and x.customer_id is not null)
+                select m.customer_id as me, other.customer_id as twin, count(*)::int as orders, sum(other.total)::float as spent,
+                       count(distinct other.currency)::int as currencies, max(other.ordered_at) as last_order
+                from mine m join other on other.k = m.k and other.customer_id <> m.customer_id
+                group by 1, 2 order by orders desc""", q)
+        by_prod: dict[UUID, list[dict]] = {}
+        for r in prods:
+            by_prod.setdefault(r["customer_id"], []).append({"product_id": r["product_id"], "title": r["title"], "units": r["units"]})
+        by_addr: dict[UUID, list[dict]] = {}
+        for r in addrs:
+            by_addr.setdefault(r["customer_id"], []).append({k: r[k] for k in ("street", "street2", "zip", "city", "country", "orders", "last_order")})
+        by_twin: dict[UUID, list[dict]] = {}
+        for r in twins:
+            by_twin.setdefault(r["me"], []).append({"id": r["twin"], "code": _code(r["twin"]), "orders": r["orders"],
+                                                     "spent": None if r["currencies"] > 1 else round(r["spent"] or 0, 2), "last_order": r["last_order"]})
+        ref = {r["customer_id"]: r for r in refunds}
+        weekly: dict[UUID, list[int]] = {}
+        for r in weeks:
+            bars = weekly.setdefault(r["customer_id"], [0] * 12)
+            if 0 <= r["ago"] < 12:
+                bars[11 - r["ago"]] += r["n"]
+        cards = []
+        for r in sorted(stats, key=lambda x: x["last_order"], reverse=True):
+            cid = r["customer_id"]
+            mixed = r["currencies"] > 1
+            cards.append({
+                "id": cid, "code": _code(cid), "orders": r["orders"], "currency": None if mixed else r["currency"],
+                "spent": None if mixed else round(r["spent"] or 0, 2),
+                "average_order": None if mixed else round((r["spent"] or 0) / max(1, r["orders"]), 2),
+                "first_order": r["first_order"], "last_order": r["last_order"], "discount_orders": r["discount_orders"],
+                "ship_cities": sorted(r["ship_cities"]),
+                "top_products": sorted(by_prod.get(cid, []), key=lambda x: (-x["units"], x["title"]))[:2],
+                "refunds": ref[cid]["refunds"] if cid in ref else 0, "refunded": ref[cid]["refunded"] if cid in ref else 0.0,
+                "weekly": weekly.get(cid, [0] * 12), "addresses": by_addr.get(cid, []), "same_address": by_twin.get(cid, []),
+            })
+        return cards
+
+    async def customer_card(self, merchant_id: UUID, customer_id: UUID) -> dict | None:
+        cards = await self._customer_cards(merchant_id, [customer_id])
+        return cards[0] if cards else None
+
+    async def customers_in_city(self, merchant_id: UUID, city: str, country: str | None, days: int) -> dict:
+        """The city's last `days`, and a card per customer who ordered there: order facts, their shipping addresses, and
+        other accounts of this shop that shipped to one of those addresses. No names, emails or phones."""
+        p = {"m": merchant_id, "c": city, "k": country, "d": days}
+        where = """o.merchant_id = %(m)s and o.cancelled_at is null and o.ship_city = %(c)s
+                   and (%(k)s::text is null or o.ship_country = %(k)s) and o.ordered_at >= now() - make_interval(days => %(d)s)"""
+        head = await self._one(
+            f"""select count(*)::int as orders, count(distinct o.customer_id)::int as customers,
+                       count(*) filter (where o.customer_id is null)::int as guest_orders,
+                       avg(o.total)::float as average_order, count(distinct o.currency)::int as currencies, min(o.currency) as currency
+                from orders o where {where}""", p)
+        ids = [r["customer_id"] for r in await self._all(f"select distinct o.customer_id from orders o where {where} and o.customer_id is not null", p)]
+        q = {**p, "ids": ids}
+        returning = await self._one(
+            """select count(distinct o.customer_id)::int as n from orders o
+               where o.merchant_id = %(m)s and o.cancelled_at is null and o.customer_id = any(%(ids)s)
+                 and o.ordered_at < now() - make_interval(days => %(d)s)""", q)
+        top = await self._all(
+            f"""select pr.id as product_id, pr.title, sum(l.quantity)::int as units
+                from orders o join order_lines l on l.merchant_id = o.merchant_id and l.order_id = o.id
+                join products pr on pr.merchant_id = l.merchant_id and pr.id = l.product_id
+                where {where} group by pr.id, pr.title order by units desc, pr.title limit 3""", p)
+        cards = await self._customer_cards(merchant_id, ids)
+        mixed = head is None or head["currencies"] > 1 or any(c["currency"] is None for c in cards)
+        n = head or {"orders": 0, "customers": 0, "guest_orders": 0, "average_order": None, "currency": None}
+        return {"city": city, "country": country, "days": days, "orders": n["orders"], "customers": n["customers"], "guest_orders": n["guest_orders"],
+                "returning": returning["n"] if returning else 0,
+                "average_order": None if mixed or not n["orders"] else round(n["average_order"] or 0, 2), "currency": None if mixed else n["currency"],
+                "top_products": top, "cards": cards}
+
+    async def store_summary(self, merchant_id: UUID, days: int) -> dict:
+        """Command 'Your store': exact Shopify numbers for the last `days` and the `days` before, plus units per day."""
+        periods = await self._all(
+            """select (o.ordered_at >= now() - make_interval(days => %(d)s)) as current,
+                      count(*)::int as orders, sum(o.total)::float as revenue, count(distinct o.customer_id)::int as customers,
+                      count(distinct o.ship_country)::int as countries, count(distinct o.currency)::int as currencies, min(o.currency) as currency
+               from orders o
+               where o.merchant_id = %(m)s and o.cancelled_at is null and o.ordered_at >= now() - make_interval(days => 2 * %(d)s)
+               group by 1""", {"m": merchant_id, "d": days})
+        units = await self._all(
+            """select (l.ordered_at >= now() - make_interval(days => %(d)s)) as current, coalesce(sum(l.quantity), 0)::int as units
+               from order_lines l join orders o on o.merchant_id = l.merchant_id and o.id = l.order_id and o.cancelled_at is null
+               where l.merchant_id = %(m)s and l.ordered_at >= now() - make_interval(days => 2 * %(d)s)
+               group by 1""", {"m": merchant_id, "d": days})
+        daily = await self._all(
+            """select d::date as day, coalesce(sum(l.quantity), 0)::int as units
+               from generate_series((now() at time zone 'utc')::date - (2 * %(d)s - 1), (now() at time zone 'utc')::date, interval '1 day') d
+               left join order_lines l on l.merchant_id = %(m)s and (l.ordered_at at time zone 'utc')::date = d::date
+                    and exists (select 1 from orders o where o.merchant_id = l.merchant_id and o.id = l.order_id and o.cancelled_at is null)
+               group by d order by d""", {"m": merchant_id, "d": days})
+        by = {r["current"]: r for r in periods}
+        u = {r["current"]: r["units"] for r in units}
+        mixed = any(r["currencies"] > 1 for r in periods) or len({r["currency"] for r in periods if r["currency"]}) > 1
+        currency = None if mixed else next((r["currency"] for r in periods if r["currency"]), None)
+
+        def period(current: bool) -> dict:
+            r = by.get(current)
+            revenue = None if mixed else round(r["revenue"] or 0, 2) if r else 0.0
+            return {"orders": r["orders"] if r else 0, "revenue": revenue, "units": u.get(current, 0),
+                    "customers": r["customers"] if r else 0, "countries": r["countries"] if r else 0}
+
+        return {"days": days, "currency": currency, "current": period(True), "previous": period(False), "daily_units": [r["units"] for r in daily]}
 
     async def product_pairs(self, merchant_id: UUID, days: int, min_orders: int) -> dict:
         """Products bought in the same order over the last `days` days. Exact counts, each pair once."""

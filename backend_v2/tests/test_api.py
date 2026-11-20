@@ -29,7 +29,7 @@ class FakeSource:
 
     async def records(self, integration_id, connection_id, model):
         t = self.tag
-        address = {"first_name": "Jane", "last_name": "Doe", "address1": "1 Secret Street", "phone": "+31600000000", "city": "Utrecht", "province": "UT", "country": "Netherlands"}
+        address = {"first_name": "Jane", "last_name": "Doe", "address1": "1 Secret Street", "phone": "+31600000000", "city": "Utrecht", "province": "UT", "country": "Netherlands", "zip": "3511 AB", "latitude": 52.09, "longitude": 5.12}
         yield {
             "locations": [{"id": f"{t}-loc", "name": f"{t} warehouse", "city": "Utrecht", "country": "Netherlands", "active": True, "created_at": "2024-01-01T00:00:00Z"}],
             "products": [{"id": f"{t}-p", "title": f"{t} shirt", "status": "active", "tags": "a, b", "created_at": "2024-01-02T00:00:00Z", "updated_at": "2024-01-03T00:00:00Z",
@@ -191,12 +191,17 @@ def test_links_and_platform_times_kept(client, shops, db):
 
 
 def test_no_personal_data_outside_raw_records(client, shops, db):
+    """No names, emails or phones anywhere. The street only in the order's shipping columns (shown to the merchant, never sent to NVIDIA)."""
     a, _ = shops
     do_import(client, a, "a")
+    street = "1 Secret Street"
     for t in ["customers", "orders", "order_lines", "locations"]:
         text = db.execute(f"select coalesce(string_agg(x::text, ' '), '') from {t} x where merchant_id = %s", (a.merchant,)).fetchone()[0]
+        if t == "orders":
+            text = text.replace(street, "")
         for value in PII:
             assert value not in text, (t, value)
+    assert db.execute("select count(*) from orders where merchant_id = %s and ship_address1 = %s", (a.merchant, street)).fetchone()[0] == 1
     assert db.execute("select city from customers where merchant_id = %s", (a.merchant,)).fetchone()[0] == "Utrecht"
 
 

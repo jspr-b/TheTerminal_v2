@@ -12,12 +12,15 @@ Every lookup by id also checks the merchant (404 when the id belongs to someone 
 |---|---|---|
 | `GET /merchants/{m}/pages/{page}` | every page | `PageState` |
 | `GET /merchants/{m}/command` | Command, Products | `CommandView` (locations, stock, 14-day ranges) |
+| `GET /merchants/{m}/command/summary` | Command | `StoreSummary` ("Your store": exact Shopify numbers) |
 | `GET /merchants/{m}/heatmap/{layer}` | Command | `Heatmap`; layer = orders, demand, returns, delays, first_time |
 | `GET /merchants/{m}/products/overview` | Products | `ProductsOverview` |
 | `GET /merchants/{m}/products/pairs` | Products, Product page | `ProductPairs` (basket galaxy) |
 | `GET /merchants/{m}/products/track-record` | Products | `TrackRecord` |
 | `GET /merchants/{m}/products/{pid}` | Product page | `ProductDetail` |
 | `GET /merchants/{m}/customers/regions` | Customers | `CustomerRegions` |
+| `GET /merchants/{m}/customers/dots` | Command (green dots) | `CustomerDots` (one per customer per shipping address, last 14 days) |
+| `GET /merchants/{m}/customers/city?city=&country=` | Command (customer panel) | `CityCustomers` (customer cards with addresses) |
 | `GET /merchants/{m}/connections` | Connections | `Connections` |
 
 `page` = command, products, product, customers, ads, support, money, connections.
@@ -47,6 +50,39 @@ interface Section {
   message: string;        // merchant-facing reason, "" when ready
 }
 interface PageState { page: string; connected: string[]; sections: Section[] }
+
+// Command "Your store". Exact Shopify, cancelled orders left out. No forecasts here: Kumo stays per product.
+interface StorePeriod { orders: number; revenue: number | null; units: number; customers: number; countries: number }
+interface StoreSummary {
+  days: number;                 // 14
+  currency: string | null;      // null (and revenue null) when orders use more than one currency
+  current: StorePeriod;         // last 14 days
+  previous: StorePeriod;        // the 14 days before
+  daily_units: number[];        // 28 values, oldest first, the last one is today
+}
+
+// Command green dots and customer cards. Exact Shopify order facts and shipping addresses, for the merchant only
+// (never sent to NVIDIA). Never names, emails or phones: code = short id. No small-number rule here (the heatmap keeps it).
+interface CityProduct { product_id: string; title: string; units: number }
+interface CustomerAddress { street: string | null; street2: string | null; zip: string | null; city: string | null; country: string | null; orders: number; last_order: string }
+interface SameAddressAccount { id: string; code: string; orders: number; spent: number | null; last_order: string }  // another account, same street + postcode
+interface CustomerCard {
+  id: string; code: string; orders: number; spent: number | null; average_order: number | null;
+  first_order: string; last_order: string; discount_orders: number; ship_cities: string[];
+  top_products: CityProduct[]; refunds: number; refunded: number;
+  weekly: number[];             // orders per week, last 12 weeks, oldest first
+  addresses: CustomerAddress[]; same_address: SameAddressAccount[];
+}
+interface CityCustomers {
+  city: string; country: string | null; days: number;
+  orders: number; customers: number; guest_orders: number; returning: number;
+  average_order: number | null; currency: string | null; top_products: CityProduct[]; cards: CustomerCard[];
+}
+interface CustomerDot {         // lat/lng from Shopify; null = place near the city centre
+  id: string; code: string; city: string; country: string | null; street: string | null; zip: string | null;
+  lat: number | null; lng: number | null; orders: number; last_order: string;
+}
+interface CustomerDots { days: number; dots: CustomerDot[] }
 
 interface HeatmapPoint { city: string; province: string | null; country: string | null; value: number }
 interface Heatmap { layer: string; section: Section; min_count: number; points: HeatmapPoint[] }

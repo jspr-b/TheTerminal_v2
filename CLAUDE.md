@@ -40,7 +40,7 @@ festivals/            Plan and decisions
   the baseline there.
 - Give Kumo only data from before the prediction date.
 - Kumo is decided. Backtests inform what we claim; they do not block building (D019).
-- Send no names, emails or street addresses.
+- Send no names, emails or street addresses. Kumo gets product sales only (sales_history).
 - Real merchant data goes to NVIDIA only after the owner confirms (D016).
 - Keys live in backend_v2/.env. Never print or commit them.
 
@@ -138,7 +138,9 @@ The map is the home screen and the heart of the product.
 - Progress: bright and dim halves, both split with turf from the same point.
 - Corridor detection is for icons only. It never splits lines.
 - Slider covers day 0-14 and must not fire a request per step.
-- Customer and demand data stay at city or region level.
+- Demand data and heatmaps stay at city or region level, with the small-number rule (5).
+- Customer dots and cards may show the Shopify shipping address to the merchant (owner, 20 Nov 2026).
+  Never names, emails or phones; addresses never go to NVIDIA or into logs.
 
 ## Design
 - Dark theme: water #080812, land #0f0f1a, borders #2a2a3e.

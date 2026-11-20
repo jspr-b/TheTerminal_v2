@@ -26,6 +26,27 @@ CITIES = [("Amsterdam", "Netherlands", 40), ("Rotterdam", "Netherlands", 22), ("
           ("Paris", "France", 44), ("Lyon", "France", 14), ("London", "United Kingdom", 48), ("Berlin", "Germany", 34),
           ("Hamburg", "Germany", 15), ("Munich", "Germany", 19), ("Vienna", "Austria", 10), ("Milan", "Italy", 12),
           ("Copenhagen", "Denmark", 7), ("Prague", "Czechia", 2)]  # Prague stays under the small-number rule
+# Made-up addresses for the demo map: city centre, postcode prefix, street names. Not real people.
+CENTRES = {"Amsterdam": (52.370, 4.895, "10", "NL"), "Rotterdam": (51.921, 4.478, "30", "NL"), "Utrecht": (52.091, 5.121, "35", "NL"),
+           "Brussels": (50.847, 4.357, "10", "BE"), "Paris": (48.857, 2.352, "750", "FR"), "Lyon": (45.760, 4.835, "6900", "FR"),
+           "London": (51.512, -0.120, "W1", "GB"), "Berlin": (52.520, 13.405, "10", "DE"), "Hamburg": (53.553, 9.993, "20", "DE"),
+           "Munich": (48.137, 11.576, "80", "DE"), "Vienna": (48.208, 16.373, "10", "AT"), "Milan": (45.464, 9.190, "201", "IT"),
+           "Copenhagen": (55.676, 12.568, "1", "DK"), "Prague": (50.087, 14.421, "110", "CZ")}
+STREETS = {"NL": ["Lindenstraat", "Kastanjelaan", "Molenweg", "Havenkade", "Tulpstraat"], "BE": ["Rue des Tilleuls", "Avenue du Parc", "Rue Haute"],
+           "FR": ["Rue des Lilas", "Rue du Marché", "Avenue des Tilleuls", "Rue de la Gare", "Boulevard du Parc"], "GB": ["Elm Street", "Mill Lane", "Park Road", "Church Walk"],
+           "DE": ["Lindenstraße", "Bergweg", "Gartenstraße", "Schulstraße"], "AT": ["Lindengasse", "Kirchengasse"], "IT": ["Via dei Tigli", "Via Roma"],
+           "DK": ["Lindevej", "Skolegade"], "CZ": ["Lipová", "Školní"]}
+
+
+def address(city, rnd):
+    """A made-up street, postcode and map position close to the city centre."""
+    lat, lng, prefix, cc = CENTRES[city]
+    street = f"{rnd.choice(STREETS[cc])} {rnd.randint(1, 140)}" if cc in ("NL", "DE", "AT", "IT", "DK", "CZ") else f"{rnd.randint(1, 140)} {rnd.choice(STREETS[cc])}"
+    zip_ = {"NL": lambda: f"{prefix}{rnd.randint(10, 99)} {rnd.choice('ABCDEFGHJK')}{rnd.choice('ABCDEFGHJK')}", "FR": lambda: f"{prefix}{rnd.randint(1, 20):02d}",
+            "GB": lambda: f"{prefix} {rnd.randint(1, 9)}{rnd.choice('ABDEFGHJ')}{rnd.choice('ABDEFGHJ')}"}.get(cc, lambda: f"{prefix}{rnd.randint(10, 99)}")()
+    return {"ship_address1": street, "ship_zip": zip_, "ship_lat": round(lat + rnd.uniform(-.012, .012), 5), "ship_lng": round(lng + rnd.uniform(-.018, .018), 5)}
+
+
 PRODUCTS = [("Linen Shirt", "Shirts", (96.4, 130, 163.2), ["S", "M", "L"]), ("Canvas Tote", "Bags", (110, 150, 189.6), ["One size"]),
             ("Wool Scarf", "Accessories", (30, 44, 61), ["One size"]), ("Leather Belt", "Accessories", (18, 25, 37), ["85 cm", "95 cm"]),
             ("Denim Jacket", "Outerwear", (22, 31, 45), ["S", "M", "L"]), ("Limited Print", "Art", None, ["A2"]),
@@ -83,6 +104,10 @@ with psycopg.connect(URL, autocommit=True) as c:
     n = 0
     for city, country, weight in CITIES:
         customers = [uuid.uuid4() for _ in range(max(2, weight // 2))]
+        home = {cid: address(city, rnd) for cid in customers}
+        second = {cid: address(city, rnd) for cid in customers if rnd.random() < .15}   # some also ship to a second address (work)
+        if len(customers) > 4:  # one pair of accounts at the same address: "ordered before, with another account"
+            home[customers[1]] = dict(home[customers[0]], ship_address1=home[customers[0]]["ship_address1"].upper())
         for cid in customers:
             ins(c, "customers", id=cid, merchant_id=M, source="shopify", external_id=f"c{cid}", city=city, country=country)
         for _ in range(int(weight * 6.4)):  # about 60 days of orders
@@ -95,8 +120,10 @@ with psycopg.connect(URL, autocommit=True) as c:
                     lines.append(products[partner])
             if rnd.random() < .06:
                 lines.append(rnd.choices(products, weights=PICK)[0])
-            ins(c, "orders", id=oid, merchant_id=M, source="shopify", external_id=f"o{n}", customer_id=rnd.choice(customers), ordered_at=when,
-                total=40 * len(lines), currency="EUR", ship_city=city, ship_country=country)
+            who = rnd.choice(customers)
+            where = second[who] if who in second and rnd.random() < .3 else home[who]
+            ins(c, "orders", id=oid, merchant_id=M, source="shopify", external_id=f"o{n}", customer_id=who, ordered_at=when,
+                total=40 * len(lines), currency="EUR", ship_city=city, ship_country=country, **where)
             for k, pid in enumerate(dict.fromkeys(lines)):
                 ins(c, "order_lines", merchant_id=M, source="shopify", external_id=f"ol{n}-{k}", order_id=oid, product_id=pid, quantity=rnd.randint(1, 2), price=40, ordered_at=when)
             if rnd.random() < .04:  # a few returns, so the product facts are not all zero
