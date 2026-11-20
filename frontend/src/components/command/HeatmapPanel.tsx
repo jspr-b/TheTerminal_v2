@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Heatmap, HeatmapLayer } from "@/lib/api";
 import { SOURCE_LABEL } from "@/lib/format";
 
@@ -76,7 +76,8 @@ export interface HeatView {
   unplaced: number;
 }
 
-export default function HeatmapPanel({
+/** The heatmap is a filter on the globe: a small "Map layer" menu in the top bar. */
+export default function LayerMenu({
   active,
   onChange,
   view,
@@ -89,85 +90,101 @@ export default function HeatmapPanel({
   loading: boolean;
   error: string | null;
 }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const style = active ? HEAT_LAYERS[active] : null;
   const current = view && view.layer === active ? view : null;
   const section = current?.heatmap.section ?? null;
 
-  return (
-    <div className="glass absolute left-3 top-[84px] z-10 flex w-[250px] flex-col rounded-[10px] p-2">
-      <div className="px-1.5 pb-1 pt-0.5 text-[11px] uppercase tracking-wide text-muted">Heatmap</div>
-      <div role="radiogroup" aria-label="Heatmap" className="flex flex-col gap-0.5">
-        <Option on={active === null} onClick={() => onChange(null)}>
-          <span className="h-2 w-[26px] flex-none rounded border border-white/10" />
-          Off
-        </Option>
-        {ORDER.map((k) => {
-          const l = HEAT_LAYERS[k];
-          return (
-            <Option key={k} on={active === k} onClick={() => onChange(k)}>
-              <span className="h-2 w-[26px] flex-none rounded" style={gradient(l.ramp)} />
-              <span className="min-w-0 flex-1">{l.label}</span>
-              <span className="source-chip">{SOURCE_LABEL[l.source]}</span>
-            </Option>
-          );
-        })}
-      </div>
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => {
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
 
-      {style && (
-        <div className="mt-2 border-t border-white/[0.08] px-1.5 pb-1 pt-2.5 text-xs">
-          {error ? (
-            <span className="text-[#f87171]">{error}</span>
-          ) : loading || !current || !section ? (
-            <span className="text-muted">Loading…</span>
-          ) : section.state !== "ready" ? (
-            <>
-              <b className="font-medium">
-                {section.title}
-                <span className="source-chip">{SOURCE_LABEL[section.source]}</span>
-              </b>
-              <p className="mt-1 text-muted">
-                {section.state === "needs_gpu"
-                  ? "Runs on a GPU server, not set up yet."
-                  : section.state === "not_built"
-                    ? "Coming later."
-                    : section.message || "Not available yet."}
-                {section.state === "not_connected" && (
-                  <>
-                    {" "}
-                    <Link href="/connections" className="text-accent hover:underline">
-                      Connections
-                    </Link>
-                  </>
-                )}
-              </p>
-            </>
-          ) : (
-            <>
-              <b className="font-medium">
-                {section.title}
-                <span className="source-chip">{SOURCE_LABEL[section.source]}</span>
-              </b>
-              <div className="mb-1 mt-1.5 h-2 rounded" style={gradient(style.ramp)} />
-              <div className="flex justify-between text-[11px] text-muted">
-                <span>{style.legend[0]}</span>
-                <span>{style.legend[1]}</span>
-              </div>
-              <p className="mt-1.5 text-[11px] leading-snug text-muted">
-                {style.about} City level only.{" "}
-                {active === "orders"
-                  ? `Cities with fewer than ${current.heatmap.min_count} orders are not shown, so no single customer can be picked out.`
-                  : "Cities with too few orders are not shown, so no single customer can be picked out."}
-              </p>
-              {current.heatmap.points.length === 0 && <p className="mt-1.5 text-[11px] text-muted">No city has enough data to show yet.</p>}
-              {current.unplaced > 0 && (
-                <p className="mt-1.5 text-[11px] text-muted">
-                  {current.unplaced} {current.unplaced === 1 ? "city" : "cities"} could not be found on the map.
-                </p>
-              )}
-            </>
-          )}
+  return (
+    <div ref={box} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className={`flex items-center gap-2 rounded-lg border bg-[#0e0e1c] px-2.5 py-1 text-xs ${open ? "border-accent/50 text-[#e7e7f0]" : "border-edge text-muted hover:text-[#e7e7f0]"}`}
+      >
+        <span className="h-[7px] w-[18px] rounded-[3px] border border-edge" style={style ? gradient(style.ramp) : undefined} />
+        {style ? style.label : "Map layer: none"} <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+6px)] z-30 w-[270px] rounded-[10px] border border-edge bg-[#0f0f1c] p-1.5 shadow-[0_12px_40px_rgba(0,0,0,.5)]">
+          <div className="px-2 pb-1.5 pt-1 text-[10px] uppercase tracking-wide text-muted">Map layer · a filter on the globe</div>
+          <div role="radiogroup" aria-label="Map layer" className="flex flex-col gap-0.5">
+            <Option on={active === null} onClick={() => onChange(null)}>
+              <span className="h-2 w-[26px] flex-none rounded border border-white/10" />
+              None
+            </Option>
+            {ORDER.map((k) => {
+              const l = HEAT_LAYERS[k];
+              return (
+                <Option key={k} on={active === k} onClick={() => onChange(k)}>
+                  <span className="h-2 w-[26px] flex-none rounded" style={gradient(l.ramp)} />
+                  <span className="min-w-0 flex-1 break-words">{l.label}</span>
+                  <span className="source-chip">{SOURCE_LABEL[l.source]}</span>
+                </Option>
+              );
+            })}
+          </div>
+          {style && <div className="mt-1.5 border-t border-white/[0.08] px-2 pb-1 pt-2 text-xs">{status(style, current, section, loading, error)}</div>}
         </div>
       )}
+    </div>
+  );
+}
+
+function status(style: LayerStyle, current: HeatView | null, section: HeatView["heatmap"]["section"] | null, loading: boolean, error: string | null) {
+  if (error) return <span className="text-[#f87171]">{error}</span>;
+  if (loading || !current || !section) return <span className="text-muted">Loading…</span>;
+  if (section.state !== "ready") {
+    return (
+      <p className="text-muted">
+        {section.state === "needs_gpu" ? "Runs on a GPU server, not set up yet." : section.state === "not_built" ? "Coming later." : section.message || "Not available yet."}
+        {section.state === "not_connected" && (
+          <>
+            {" "}
+            <Link href="/connections" className="text-accent hover:underline">
+              Connections
+            </Link>
+          </>
+        )}
+      </p>
+    );
+  }
+  return (
+    <p className="text-[11px] leading-snug text-muted">
+      {style.about} City level, on land only. Cities with fewer than {current.heatmap.min_count} orders are not shown, so no single customer can be picked out.
+      {current.heatmap.points.length === 0 && " No city has enough data yet."}
+      {current.unplaced > 0 && ` ${current.unplaced} ${current.unplaced === 1 ? "city" : "cities"} could not be found on the map.`}
+    </p>
+  );
+}
+
+/** The legend chip on the map while a layer is on. */
+export function LayerLegend({ active, view, bottom }: { active: HeatmapLayer | null; view: HeatView | null; bottom: number }) {
+  if (!active || !view || view.layer !== active || view.heatmap.section.state !== "ready") return null;
+  const style = HEAT_LAYERS[active];
+  return (
+    <div className="absolute left-[58px] z-[6] flex items-center gap-2 rounded-[9px] border border-edge bg-[#0c0c16]/88 px-2.5 py-1 text-[11px] text-muted transition-[bottom] duration-[450ms]" style={{ bottom: bottom + (bottom ? 16 : 42) }}>
+      <span>{style.legend[0]}</span>
+      <span className="h-[7px] w-[70px] rounded-[3px]" style={gradient(style.ramp)} />
+      <span>{style.legend[1]}</span>
+      <span className="source-chip">{SOURCE_LABEL[view.heatmap.section.source]}</span>
     </div>
   );
 }

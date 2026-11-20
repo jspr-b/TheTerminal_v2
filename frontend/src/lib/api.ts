@@ -295,6 +295,109 @@ export function getCommand(merchantId: string): Promise<CommandView> {
   return get<CommandView>(`/merchants/${enc(merchantId)}/command`);
 }
 
+export interface StorePeriod {
+  orders: number;
+  /** null when orders use more than one currency: never added up across currencies. */
+  revenue: number | null;
+  units: number;
+  customers: number;
+  countries: number;
+}
+/** Command "Your store": exact Shopify numbers, docs/api.md. */
+export interface StoreSummary {
+  days: number;
+  currency: string | null;
+  current: StorePeriod;
+  previous: StorePeriod;
+  /** Oldest first, twice `days` long; the last value is today. */
+  daily_units: number[];
+}
+
+export interface CityProduct {
+  product_id: string;
+  title: string;
+  units: number;
+}
+export interface CustomerAddress {
+  street: string | null;
+  street2: string | null;
+  zip: string | null;
+  city: string | null;
+  country: string | null;
+  orders: number;
+  last_order: string;
+}
+/** Another account of this shop that shipped to one of the same addresses. */
+export interface SameAddressAccount {
+  id: string;
+  code: string;
+  orders: number;
+  spent: number | null;
+  last_order: string;
+}
+/** One customer from their orders: no name, email or phone. Shipping addresses are for the merchant only. docs/api.md */
+export interface CustomerCard {
+  id: string;
+  code: string;
+  orders: number;
+  /** null when their orders use more than one currency (then spent is null too). */
+  currency: string | null;
+  spent: number | null;
+  average_order: number | null;
+  first_order: string;
+  last_order: string;
+  discount_orders: number;
+  ship_cities: string[];
+  top_products: CityProduct[];
+  refunds: number;
+  refunded: number;
+  /** Orders per week, last 12 weeks, oldest first. */
+  weekly: number[];
+  addresses: CustomerAddress[];
+  same_address: SameAddressAccount[];
+}
+/** One customer at one shipping address. lat/lng from Shopify; null means place it at the city. */
+export interface CustomerDot {
+  id: string;
+  code: string;
+  city: string;
+  country: string | null;
+  street: string | null;
+  zip: string | null;
+  lat: number | null;
+  lng: number | null;
+  orders: number;
+  last_order: string;
+}
+export function getCustomer(merchantId: string, customerId: string): Promise<CustomerCard> {
+  return get<CustomerCard>(`/merchants/${enc(merchantId)}/customers/${enc(customerId)}`);
+}
+export function getCustomerDots(merchantId: string): Promise<{ days: number; dots: CustomerDot[] }> {
+  return get<{ days: number; dots: CustomerDot[] }>(`/merchants/${enc(merchantId)}/customers/dots`);
+}
+export interface CityCustomers {
+  city: string;
+  country: string | null;
+  days: number;
+  orders: number;
+  customers: number;
+  guest_orders: number;
+  returning: number;
+  average_order: number | null;
+  currency: string | null;
+  top_products: CityProduct[];
+  cards: CustomerCard[];
+}
+
+export function getCityCustomers(merchantId: string, city: string, country: string | null): Promise<CityCustomers> {
+  const q = new URLSearchParams({ city, ...(country ? { country } : {}) });
+  return get<CityCustomers>(`/merchants/${enc(merchantId)}/customers/city?${q}`);
+}
+
+export function getStoreSummary(merchantId: string): Promise<StoreSummary> {
+  return get<StoreSummary>(`/merchants/${enc(merchantId)}/command/summary`);
+}
+
 export function getPageState(merchantId: string, page: PageName): Promise<PageState> {
   return get<PageState>(`/merchants/${enc(merchantId)}/pages/${page}`);
 }

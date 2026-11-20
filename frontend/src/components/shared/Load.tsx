@@ -8,20 +8,53 @@ export interface Loaded<T> {
   retry: () => void;
 }
 
-/** Loads once per key; ignores answers that arrive after the key changed or the page closed. */
+// A small shared cache for API answers, so moving between pages shows the last answer at once.
+// Answers are kept in memory only (never stored), refreshed in the background on every visit, and requests for
+// the same key that overlap share one fetch (also covers React's double effects in development).
+const cache = new Map<string, unknown>();
+const inflight = new Map<string, Promise<unknown>>();
+
+/** Fetch once per key at a time; remembers the answer for the next visit. */
+export function cachedLoad<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const running = inflight.get(key);
+  if (running) return running as Promise<T>;
+  const p = load().then(
+    (d) => {
+      cache.set(key, d);
+      inflight.delete(key);
+      return d;
+    },
+    (e: unknown) => {
+      inflight.delete(key);
+      throw e;
+    },
+  );
+  inflight.set(key, p);
+  return p;
+}
+
+/** The last answer for this key, if any. */
+export function cached<T>(key: string): T | null {
+  return (cache.get(key) as T | undefined) ?? null;
+}
+
+/** Loads per key: shows the last answer at once, then refreshes it. Ignores answers that arrive after the key changed or the page closed. */
 export function useLoad<T>(load: () => Promise<T>, key: string): Loaded<T> {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<T | null>(() => cached<T>(key));
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
     setError(null);
-    load()
+    setData(cached<T>(key));
+    cachedLoad(key, load)
       .then((d) => {
-        if (live) setData(d);
+        // an unchanged answer keeps the old object, so nothing downstream rebuilds (e.g. the 3D worlds)
+        if (live) setData((prev) => (prev !== null && JSON.stringify(prev) === JSON.stringify(d) ? prev : d));
       })
       .catch((e: unknown) => {
+        // keep showing the last answer if there is one; the error is still reported
         if (live) setError(e instanceof Error ? e.message : "Could not load.");
       });
     return () => {
