@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Command · customer dot · mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Mockup: what a green order dot can show, per city and per customer.
+  Four kinds of information, always labelled:
+    1. Shopify, already imported        real demo-shop numbers (Paris, 19 Nov 2026)
+    2. Shopify, not imported yet        dashed, "sample": made-up, needs an importer change, no personal data
+    3. Kumo, new question               dashed, "sample": made-up, needs a new Kumo run (customer ids only, never names)
+    4. Personal data                    locked: needs the owner to change the CLAUDE.md rule
+                                        ("customer data stays at city or region level") + GDPR basis
+-->
+<style>
+:root{--bg:#07070f;--edge:#24243a;--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;--green:#4ade80;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 "IBM Plex Sans",Inter,system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.stage{position:absolute;inset:0}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+.note{position:absolute;left:16px;top:14px;z-index:3;font-size:11px;color:var(--dim);max-width:520px}
+.note b{color:var(--muted);font-weight:500}
+.dot{position:absolute;z-index:4;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;cursor:pointer;display:grid;place-items:center}
+.dot i{width:8px;height:8px;border-radius:50%;background:var(--green);border:1px solid #0b2a18;box-shadow:0 0 0 0 rgba(74,222,128,.5)}
+.dot:hover i,.dot.on i{box-shadow:0 0 0 5px rgba(74,222,128,.18)}
+.dot .nm{position:absolute;left:16px;top:-2px;font-size:11px;color:var(--muted);white-space:nowrap}
+.dot.small i{width:7px;height:7px;opacity:.85}
+/* hover card */
+.hover{position:absolute;z-index:6;width:260px;padding:10px 12px;border:1px solid rgba(124,140,255,.45);border-radius:11px;background:rgba(14,14,28,.97);box-shadow:0 12px 40px rgba(0,0,0,.5);display:none}
+.hover.on{display:block}
+.hover h3{margin:0 0 6px;font-size:14px}
+.k{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:8px}
+.k b{display:block;font-family:var(--mono);font-size:17px;font-weight:500}.k span{font-size:10.5px;color:var(--muted)}
+.hover .tops{font-size:11px;color:var(--muted)}.hover .tops b{color:var(--text);font-weight:500}
+.hover .cta{margin-top:8px;font-size:11px;color:var(--accent)}
+.src{display:inline-block;margin-left:5px;padding:0 5px;border:1px solid var(--edge);border-radius:4px;font-size:9.5px;color:var(--muted);vertical-align:1px;font-weight:400}
+/* drawer */
+.drawer{position:absolute;right:12px;top:12px;bottom:12px;z-index:7;width:420px;display:flex;flex-direction:column;border:1px solid var(--edge);border-radius:13px;background:rgba(11,11,22,.96);backdrop-filter:blur(8px);transform:translateX(calc(100% + 24px));opacity:0;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .35s}
+.drawer.on{transform:none;opacity:1}
+.dh{padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,.07);position:relative}
+.dh h2{margin:0;font-size:16px}.dh .sub{font-size:11px;color:var(--muted)}
+.x{position:absolute;right:10px;top:10px;width:26px;height:26px;border-radius:50%;border:1px solid var(--edge);color:var(--muted)}.x:hover{color:var(--text);border-color:var(--accent)}
+.list{flex:1;overflow:auto;padding:10px 12px 16px}
+.cust{border:1px solid #2e2e4a;border-radius:11px;background:#11112a;margin-bottom:8px;overflow:hidden}
+.cust>button{display:flex;width:100%;align-items:center;gap:10px;padding:10px 12px;text-align:left}
+.cust>button:hover{background:#15153a}
+.av{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-family:var(--mono);font-size:10px;color:#0b2a18;background:var(--green)}
+.cust .t{flex:1;min-width:0}.cust .t b{font-weight:600}.cust .t div{font-size:11px;color:var(--muted)}
+.cust .v{text-align:right;font-family:var(--mono)}.cust .v div{font-size:10.5px;color:var(--muted);font-family:inherit}
+.body{display:none;padding:4px 12px 12px}.cust.open .body{display:block}
+.tier{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.06)}
+.tier h4{margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px}
+.row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12px}.row span:first-child{color:var(--muted)}.row span:last-child{text-align:right}
+.mono{font-family:var(--mono)}
+.sample{border:1px dashed rgba(255,255,255,.25);border-radius:9px;padding:7px 9px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.02) 0 6px,transparent 6px 12px)}
+.stag{font-size:9.5px;padding:0 5px;border:1px dashed rgba(255,255,255,.35);border-radius:4px;color:#c9c9d8;text-transform:none;letter-spacing:0}
+.lock{opacity:.6}.lock .row span:last-child{color:var(--dim)}
+.why{font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.35}
+.band{display:inline-block;padding:0 6px;border-radius:5px;background:rgba(124,140,255,.16);color:#c3c9ff;font-size:11px}
+.tl{display:flex;gap:2px;align-items:flex-end;height:22px;margin:4px 0 2px}.tl i{flex:1;background:#3a3f7a;border-radius:1px}.tl i.on{background:var(--green)}
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="globe"></canvas>
+  <div class="note"><b>Mockup</b> · hover the green Paris dot for the city, click it for its customers, click a customer for the full card. Real demo-shop numbers, except where marked <span class="stag">sample</span> (made up).</div>
+  <div id="dots"></div>
+  <div class="hover" id="hover"></div>
+  <aside class="drawer" id="drawer" aria-label="Customers in Paris">
+    <div class="dh"><button class="x" id="close" aria-label="Close">✕</button>
+      <h2>Paris <span class="src">Shopify</span></h2>
+      <div class="sub">19 customers ordered in the last 14 days · 73 orders · newest first</div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+</div>
+<script type="module">
+const d3 = await import("https://esm.sh/d3@7.9.0");
+const topojson = await import("https://esm.sh/topojson-client@3.1.0");
+const world = await (await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")).json();
+const land = topojson.feature(world, world.objects.countries);
+const canvas = document.getElementById("globe"), ctx = canvas.getContext("2d"), stage = document.getElementById("stage");
+const proj = d3.geoOrthographic().clipAngle(90).rotate([-6, -49]);
+const path = d3.geoPath(proj, ctx);
+const CITIES = [["Paris",[2.35,48.86],73,true],["London",[-0.13,51.51],60],["Amsterdam",[4.9,52.37],55],["Berlin",[13.4,52.52],54],["Munich",[11.58,48.14],34],["Brussels",[4.35,50.85],33],["Rotterdam",[4.48,51.92],33],["Lyon",[4.84,45.76],27],["Utrecht",[5.12,52.09],25],["Hamburg",[9.99,53.55],19],["Milan",[9.19,45.46],16],["Vienna",[16.37,48.21],14],["Copenhagen",[12.57,55.68],12]];
+function draw() {
+  const W = stage.clientWidth, H = stage.clientHeight, dpr = Math.min(2, devicePixelRatio);
+  canvas.width = W * dpr; canvas.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  proj.scale(H * 1.5).translate([(W - 440) / 2, H / 2]);
+  ctx.fillStyle = "#03030a"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#080812"; ctx.beginPath(); path({ type: "Sphere" }); ctx.fill();
+  ctx.fillStyle = "#0f0f1a"; ctx.strokeStyle = "#2a2a3e"; ctx.lineWidth = .6; ctx.beginPath(); path(land); ctx.fill(); ctx.stroke();
+  const box = document.getElementById("dots"); box.innerHTML = "";
+  for (const [n, ll, o, main] of CITIES) {
+    const [x, y] = proj(ll); const d = document.createElement("button");
+    d.className = "dot" + (main ? "" : " small"); d.style.left = x + "px"; d.style.top = y + "px"; d.setAttribute("aria-label", `${n}, ${o} orders`);
+    d.innerHTML = `<i></i>${main ? `<span class="nm">${n}</span>` : ""}`;
+    if (main) { d.onmouseenter = () => showHover(d, x, y); d.onmouseleave = () => hover.classList.remove("on"); d.onclick = () => openDrawer(d); }
+    else d.title = `${n} · ${o} orders, last 14 days (mockup: only Paris opens)`;
+    box.append(d);
+  }
+}
+addEventListener("resize", draw);
+
+// ---------- city hover: real demo numbers ----------
+const hover = document.getElementById("hover");
+function showHover(d, x, y) {
+  hover.innerHTML = `<h3>Paris <span class="src">Shopify</span></h3>
+    <div class="k"><div><b>73</b><span>orders, last 14 days</span></div><div><b>19</b><span>customers</span></div>
+    <div><b>€49</b><span>average order</span></div><div><b>all 19</b><span>ordered before too</span></div></div>
+    <div class="tops">Most bought here: <b>Canvas Tote 32</b> · Cotton Tee 17 · Knit Beanie 15</div>
+    <div class="cta">Click for the customers →</div>`;
+  hover.style.left = (x + 16) + "px"; hover.style.top = (y - 40) + "px"; hover.classList.add("on");
+}
+
+// ---------- customers ----------
+const C = [
+  { id: "4F2A", orders: 22, spent: "€1,200", avg: "€55", first: "Sat 26 Sep", last: "Sat 14 Nov", prods: "Canvas Tote 15 · Oxford Shirt 7", refunds: "1 refund", disc: "never", cities: "Paris only", weeks: [1,2,2,1,3,2,1,2,3,2,2,1] },
+  { id: "EB23", orders: 17, spent: "€840", avg: "€49", first: "Mon 21 Sep", last: "today", prods: "Canvas Tote 6 · Card Holder 5", refunds: "1 refund", disc: "never", cities: "Paris only", weeks: [1,1,2,1,1,2,2,1,1,2,1,2] },
+  { id: "C566", orders: 16, spent: "€840", avg: "€53", first: "Sun 27 Sep", last: "Mon 16 Nov", prods: "Linen Shirt 8 · Canvas Tote 5", refunds: "1 refund", disc: "never", cities: "Paris only", weeks: [0,2,1,2,1,1,2,1,2,1,2,1] },
+];
+const list = document.getElementById("list");
+list.innerHTML = C.map((c, i) => `
+  <div class="cust${i === 0 ? " open" : ""}">
+    <button aria-expanded="${i === 0}"><span class="av">${c.id.slice(0, 2)}</span>
+      <span class="t"><b>Customer ${c.id}</b><div>${c.orders} orders since ${c.first} · last ${c.last}</div></span>
+      <span class="v">${c.spent}<div>spent</div></span></button>
+    <div class="body">
+      <div class="tier"><h4>From Shopify <span class="src">Shopify</span> already imported</h4>
+        <div class="row"><span>Orders · average</span><span class="mono">${c.orders} · ${c.avg}</span></div>
+        <div class="row"><span>First order · last order</span><span>${c.first} · ${c.last}</span></div>
+        <div class="row"><span>Buys most</span><span>${c.prods}</span></div>
+        <div class="row"><span>Returns</span><span>${c.refunds}</span></div>
+        <div class="row"><span>Used a discount</span><span>${c.disc}</span></div>
+        <div class="row"><span>Ships to</span><span>${c.cities}</span></div>
+        <div class="row" style="display:block"><span>Orders per week, last 12 weeks</span><div class="tl">${c.weeks.map(w => `<i class="${w ? "on" : ""}" style="height:${4 + w * 6}px"></i>`).join("")}</div></div>
+      </div>
+      <div class="tier"><h4>From Shopify, not imported yet <span class="stag">sample</span></h4>
+        <div class="sample">
+          <div class="row"><span>Customer since</span><span>Mar 2025</span></div>
+          <div class="row"><span>Email marketing</span><span>subscribed</span></div>
+          <div class="row"><span>Tags (set by you in Shopify)</span><span>VIP · wholesale</span></div>
+          <div class="row"><span>Where they order</span><span>Online store 20 · Shop app 2</span></div>
+          <div class="row"><span>Shipping they choose</span><span>Express 14 · Standard 8</span></div>
+          <div class="row"><span>Shopify fraud check, last order</span><span>low</span></div>
+          <div class="row"><span>First came from</span><span>Instagram</span></div>
+          <div class="why">All available from Shopify without names or emails; needs one importer change through Nango.</div>
+        </div>
+      </div>
+      <div class="tier"><h4>Kumo, a new question <span class="src">Kumo</span> <span class="stag">sample</span></h4>
+        <div class="sample">
+          <div class="row"><span>Chance of another order, next 14 days</span><span class="band">high</span></div>
+          <div class="row"><span>Chance they stop buying</span><span class="band">low</span></div>
+          <div class="row"><span>Most likely next product</span><span>Linen Shirt</span></div>
+          <div class="why">Kumo gets only customer ids, orders and products, never names, emails or addresses. Needs a new Kumo run before it shows.</div>
+        </div>
+      </div>
+      <div class="tier lock"><h4>🔒 Personal data</h4>
+        <div class="row"><span>Name · email · phone</span><span>not imported</span></div>
+        <div class="row"><span>Street address</span><span>not imported</span></div>
+        <div class="row"><span>Same person, other account?</span><span>needs email, phone or address</span></div>
+        <div class="why">CLAUDE.md: customer data stays at city or region level. Showing these needs your rule change, a GDPR basis and a line in your privacy policy.</div>
+      </div>
+    </div>
+  </div>`).join("");
+list.querySelectorAll(".cust>button").forEach(b => b.onclick = () => { const c = b.parentElement, o = !c.classList.contains("open"); c.classList.toggle("open", o); b.setAttribute("aria-expanded", o); });
+
+const drawer = document.getElementById("drawer");
+function openDrawer(d) { hover.classList.remove("on"); document.querySelectorAll(".dot").forEach(x => x.classList.remove("on")); d.classList.add("on"); drawer.classList.add("on"); }
+document.getElementById("close").onclick = () => { drawer.classList.remove("on"); document.querySelectorAll(".dot").forEach(x => x.classList.remove("on")); };
+addEventListener("keydown", e => e.key === "Escape" && document.getElementById("close").click());
+draw();
+window.__open = () => document.querySelector(".dot:not(.small)").click();
+window.__hover = () => document.querySelector(".dot:not(.small)").dispatchEvent(new MouseEvent("mouseenter"));
+</script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Command v2 · mockup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Mockup for the Command page (real numbers from the demo shop, 19 Nov 2026).
+  1. The globe is the main thing: always moving, a slow sway over the region where the shop sells
+     (Europe here), never a full spin over empty oceans, poles or continents without sellers.
+  2. The heatmap is a filter: a small "Map layer" menu in the top bar, legend as a chip on the map.
+  3. Zoom, re-centre and pause live in one small control at the bottom left.
+  4. Right panel "Your store": how things are going (Shopify, exact) separated from what Kumo says
+     (per product, never added up into store totals), then the locations.
+  5. Bottom: "Needs attention" cards with operational facts, not product features: what could run out
+     and where its stock sits, what sold more than expected, what has far more stock than it needs.
+     Hover a card: the globe shows that product's stock per location. Click: the product page.
+-->
+<style>
+:root{--bg:#07070f;--land:#14142a;--edge:#24243a;--text:#e7e7f0;--muted:#8d8da6;--dim:#55556d;--accent:#7c8cff;--low:#34d399;--medium:#fbbf24;--high:#f87171;--mono:"IBM Plex Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 "IBM Plex Sans",Inter,system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{display:flex;height:100%}
+nav.side{width:200px;flex:none;border-right:1px solid var(--edge);background:#0c0c18;padding:14px 10px}
+nav.side b{display:block;padding:0 8px 16px}nav.side a{display:flex;gap:10px;align-items:center;padding:7px 8px;border-radius:7px;color:var(--muted);text-decoration:none}
+nav.side a.on{background:rgba(124,140,255,.15);color:var(--text)}nav.side a i{width:14px;height:14px;border:1.5px solid currentColor;border-radius:4px}
+main{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--edge);color:var(--muted)}
+.top .sp{flex:1}
+.chipbtn{display:flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--edge);border-radius:8px;background:#0e0e1c;color:var(--muted);font-size:12px}
+.chipbtn:hover,.chipbtn[aria-expanded=true]{border-color:rgba(124,140,255,.5);color:var(--text)}
+.chipbtn .sw{width:18px;height:7px;border-radius:3px;border:1px solid var(--edge)}
+.menu{position:absolute;right:332px;top:48px;z-index:20;width:250px;padding:6px;border:1px solid var(--edge);border-radius:10px;background:#0f0f1c;box-shadow:0 12px 40px rgba(0,0,0,.5);display:none}
+.menu.open{display:block}.menu .h{padding:4px 8px 6px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.menu button{display:flex;width:100%;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;text-align:left;font-size:12px;color:var(--muted)}
+.menu button:hover{background:rgba(255,255,255,.04)}.menu button.on{background:rgba(255,255,255,.07);color:var(--text)}
+.menu button[disabled]{opacity:.45;cursor:default}.menu small{margin-left:auto;font-size:10px;color:var(--dim)}
+.src{display:inline-block;margin-left:6px;padding:0 5px;border:1px solid var(--edge);border-radius:4px;font-size:9.5px;color:var(--muted);vertical-align:1px}
+.stage{position:relative;flex:1;min-height:0}
+canvas#globe{position:absolute;inset:0;width:100%;height:100%}
+.loc{position:absolute;transform:translate(-50%,-100%);pointer-events:auto;cursor:pointer;transition:opacity .3s}
+.loc .pin{position:absolute;left:50%;bottom:-6px;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(124,140,255,.25),0 0 18px rgba(124,140,255,.9)}
+.loc .tag{margin-bottom:12px;padding:5px 9px;border:1px solid rgba(124,140,255,.45);border-radius:9px;background:rgba(12,12,26,.92);white-space:nowrap;font-size:12px}
+.loc .tag b{font-weight:600}.loc .tag .m{color:var(--muted);font-size:11px}.loc .tag .warn{font-size:11px;color:var(--high)}
+.loc .tag .pu{font-family:var(--mono);font-size:15px;color:var(--text)}
+.mapctl{position:absolute;left:14px;bottom:210px;z-index:6;display:flex;flex-direction:column;border:1px solid var(--edge);border-radius:10px;background:rgba(12,12,22,.88);overflow:hidden}
+.mapctl button{width:32px;height:30px;color:var(--muted);font-size:15px}.mapctl button:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.mapctl button+button{border-top:1px solid var(--edge)}
+.legend{position:absolute;left:58px;bottom:212px;z-index:6;display:none;align-items:center;gap:8px;padding:5px 10px;border:1px solid var(--edge);border-radius:9px;background:rgba(12,12,22,.88);font-size:11px;color:var(--muted)}
+.legend.on{display:flex}.legend i{width:70px;height:7px;border-radius:3px;background:linear-gradient(90deg,#3b3f9e,#7c8cff,#c7ceff)}
+/* right panel */
+aside.store{position:absolute;right:12px;top:12px;bottom:210px;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .35s,bottom .45s cubic-bezier(.2,.8,.2,1);z-index:6;width:304px;overflow:auto;padding:14px;border:1px solid var(--edge);border-radius:12px;background:rgba(12,12,24,.9);backdrop-filter:blur(6px)}
+aside h2{margin:0;font-size:15px}aside .sub{color:var(--muted);font-size:11px;margin-bottom:12px}
+.sec{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.07)}
+.sech{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.kpi .v{font-family:var(--mono);font-size:20px;line-height:1.1}.kpi .l{font-size:11px;color:var(--muted)}.kpi .d{font-size:10.5px;color:var(--dim)}
+.kpi .d.up{color:#9aa6ff}
+.spark{margin-top:8px}
+.riskbar{display:flex;height:9px;border-radius:5px;overflow:hidden;margin:6px 0 5px}.riskbar i{display:block}
+.rl{display:flex;gap:12px;font-size:11px;color:var(--muted)}.rl b{font-family:var(--mono);font-weight:500}
+.line{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.line .n{font-family:var(--mono);color:var(--text)}.line .m{color:var(--muted)}
+.dots{display:flex;gap:3px;margin-top:3px}.dots i{width:8px;height:8px;border-radius:50%;border:1px solid #7c8cff}.dots i.in{background:#7c8cff}
+.tag-u{font-size:9.5px;padding:0 4px;border:1px dashed rgba(251,191,36,.6);border-radius:4px;color:#fbbf24;margin-left:5px}
+.locrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer}
+.locrow:hover .ln{color:var(--accent)}.locrow .ln{flex:1}.locrow .u{font-family:var(--mono)}.locrow .w{font-size:10.5px;color:var(--high)}
+/* attention strip */
+.attn{position:absolute;left:12px;right:12px;bottom:12px;z-index:6;height:186px;transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .35s;padding:10px 12px;border:1px solid var(--edge);border-radius:12px;background:rgba(12,12,24,.92)}
+.attn .ah{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}.attn .ah b{font-size:13px}.attn .ah span{font-size:11px;color:var(--muted)}
+.attn .ah a{margin-left:auto;font-size:11px;color:var(--accent);text-decoration:none}
+.track{display:flex;gap:18px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.grp+.grp{padding-left:18px;border-left:1px solid rgba(255,255,255,.06)}
+.grp{flex:none;display:flex;flex-direction:column;gap:6px}
+.grp .gh{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.grp .cards{display:flex;gap:8px}
+.pc{width:236px;height:118px;flex:none;padding:9px 11px 8px;border:1px solid #2e2e4a;border-radius:10px;background:#11112a;text-align:left;display:flex;flex-direction:column;gap:2px;overflow:hidden;transition:border-color .2s,transform .2s,background .2s}
+.pc>div{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .t{flex:none}.pc .t .name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.pc:hover,.pc.on{border-color:rgba(124,140,255,.7);background:#15153a;transform:translateY(-2px)}
+.pc .bar{flex:none}
+.pc .t{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px}.pc .t .dot{width:7px;height:7px;border-radius:50%}
+.pc .t .open{margin-left:auto;font-weight:400;font-size:10.5px;color:var(--dim)}
+.pc .head{font-size:12.5px}.pc .head b{font-family:var(--mono);font-weight:500}
+.pc .m{font-size:11px;color:var(--muted)}.pc .m b{font-family:var(--mono);font-weight:500;color:var(--text)}
+.pc .bar{position:relative;height:14px;margin-top:auto;overflow:hidden}
+.pc .bar .s{position:absolute;top:5px;height:3px;left:0;background:rgba(255,255,255,.25);border-radius:2px}
+.pc .bar .r{position:absolute;top:1px;height:10px;border-radius:3px;border:1px solid}
+.pc .bar .k{position:absolute;top:-1px;width:2px;height:14px;background:#fff}
+body.noStore aside.store{transform:translateX(calc(100% + 24px));opacity:0;pointer-events:none}
+body.noAttn .attn{transform:translateY(calc(100% + 24px));opacity:0;pointer-events:none}
+body.noAttn aside.store{bottom:12px}
+body.noAttn .mapctl,body.noAttn .legend{bottom:16px}
+.mapctl,.legend{transition:bottom .45s cubic-bezier(.2,.8,.2,1)}
+.x{position:absolute;right:8px;top:8px;width:24px;height:24px;border-radius:50%;border:1px solid var(--edge);color:var(--muted);font-size:13px;line-height:1}
+.x:hover{color:var(--text);border-color:var(--accent)}
+.attn .x{top:8px}
+.reopen{position:absolute;z-index:5;display:flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--edge);border-radius:9px;background:rgba(12,12,22,.9);color:var(--muted);font-size:12px;opacity:0;pointer-events:none;transition:opacity .3s .15s}
+.reopen:hover{color:var(--text);border-color:var(--accent)}
+body.noStore #openStore{opacity:1;pointer-events:auto}body.noAttn #openAttn{opacity:1;pointer-events:auto}
+#openStore{right:14px;top:14px}#openAttn{left:50%;bottom:14px;transform:translateX(-50%)}
+.tip{position:absolute;z-index:8;pointer-events:none;display:none;padding:6px 10px;border:1px solid var(--edge);border-radius:9px;background:rgba(15,15,28,.96);font-size:12px;white-space:nowrap}
+.tip b{font-weight:600}.tip .m{color:var(--muted);font-size:11px}
+canvas#globe{cursor:grab}canvas#globe.drag{cursor:grabbing}
+.note{position:absolute;left:14px;top:12px;z-index:6;max-width:420px;font-size:11px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side"><b>The Terminal</b>
+    <a class="on" href="#"><i></i>Command</a><a href="products-world.html"><i></i>Products</a><a href="#"><i></i>Customers</a><a href="#"><i></i>Ads</a><a href="#"><i></i>Support</a><a href="#"><i></i>Money</a><a href="#"><i></i>Connections</a>
+  </nav>
+  <main>
+    <div class="top">
+      <span>Command</span><span id="crumb"></span><span class="sp"></span>
+      <button class="chipbtn" id="layerBtn" aria-expanded="false" aria-haspopup="menu"><span class="sw" id="layerSw"></span><span id="layerName">Map layer: none</span> ▾</button>
+    </div>
+    <div class="menu" id="menu" role="menu">
+      <div class="h">Map layer · a filter on the globe</div>
+      <button class="on" data-l="off">None</button>
+      <button data-l="orders"><span class="sw" style="width:18px;height:7px;border-radius:3px;background:linear-gradient(90deg,#3b3f9e,#7c8cff,#c7ceff)"></span>Orders, last 14 days<small>Shopify</small></button>
+      <button disabled><span class="sw" style="width:18px;height:7px;border-radius:3px;background:linear-gradient(90deg,#0f766e,#2dd4bf)"></span>Demand, next 14 days<small>waits on a test</small></button>
+      <button disabled><span class="sw" style="width:18px;height:7px;border-radius:3px;background:linear-gradient(90deg,#92400e,#fbbf24)"></span>Returns likely<small>later</small></button>
+      <button disabled><span class="sw" style="width:18px;height:7px;border-radius:3px;background:linear-gradient(90deg,#86198f,#e879f9)"></span>Delivery delays likely<small>later</small></button>
+      <button disabled><span class="sw" style="width:18px;height:7px;border-radius:3px;background:linear-gradient(90deg,#065f46,#34d399)"></span>First-time buyers back<small>later</small></button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="globe"></canvas>
+      <div id="locs"></div>
+      <div class="note">Mockup · real demo numbers. The globe sways over where you sell, it never spins over empty oceans.</div>
+      <div class="mapctl" aria-label="Map controls">
+        <button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="home" aria-label="Back to your region">⌂</button><button id="pause" aria-label="Pause movement">❙❙</button>
+      </div>
+      <div class="legend" id="legend"><span>fewer</span><i></i><span>more orders</span><span class="src">Shopify</span></div>
+
+      <div class="tip" id="tip"></div>
+      <button class="reopen" id="openStore" aria-label="Show your store">‹ Your store</button>
+      <button class="reopen" id="openAttn" aria-label="Show needs attention">⌃ Needs attention · 10</button>
+      <aside class="store" aria-label="Your store">
+        <button class="x" id="hideStore" aria-label="Hide your store">✕</button>
+        <h2>Your store</h2><div class="sub">3 locations · 16 products · 2,062 units in stock</div>
+
+        <div class="sec" style="margin-top:0;border-top:0;padding-top:0">
+          <div class="sech"><span>Last 14 days <span class="src">Shopify</span></span><span>exact</span></div>
+          <div class="big">
+            <div class="kpi"><div class="v">€22,600</div><div class="l">revenue</div><div class="d up">€680 more than the 14 days before</div></div>
+            <div class="kpi"><div class="v">458</div><div class="l">orders</div><div class="d up">16 more</div></div>
+            <div class="kpi"><div class="v">841</div><div class="l">units sold</div><div class="d up">13 more</div></div>
+            <div class="kpi"><div class="v">139</div><div class="l">customers · 9 countries</div></div>
+          </div>
+          <svg class="spark" id="spark" width="276" height="40" aria-label="Units sold per day, last 28 days"></svg>
+          <div class="d" style="font-size:10.5px;color:var(--dim)">Units sold per day, last 28 days · the brighter half is the last 14</div>
+        </div>
+
+        <div class="sec">
+          <div class="sech"><span>Next 14 days <span class="src">Kumo</span></span><span>per product</span></div>
+          <div style="font-size:12px">Sell-out risk across 15 products<span class="tag-u">untested</span></div>
+          <div class="riskbar"><i style="flex:1;background:var(--high)"></i><i style="flex:3;background:var(--medium)"></i><i style="flex:11;background:var(--low)"></i></div>
+          <div class="rl"><span><b style="color:var(--high)">1</b> high</span><span><b style="color:var(--medium)">3</b> medium</span><span><b style="color:var(--low)">11</b> low</span><span style="margin-left:auto">1 too few sales</span></div>
+          <div class="line" style="margin-top:8px"><span>Could run out within 14 days<span class="tag-u">our math</span></span><span class="n">4</span></div>
+          <div class="line"><span>Stock far above what will likely sell<span class="tag-u">our math</span></span><span class="n">6</span></div>
+          <div class="line" style="border:0"><span>Kumo's range held<div class="m" style="font-size:10.5px">last check, Sat 31 Oct – Sat 14 Nov</div><div class="dots" id="dots"></div></span><span class="n">11 of 15</span></div>
+        </div>
+
+        <div class="sec">
+          <div class="sech"><span>Locations <span class="src">Shopify</span></span><span>units</span></div>
+          <div id="locrows"></div>
+        </div>
+      </aside>
+
+      <section class="attn" aria-label="Needs attention">
+        <button class="x" id="hideAttn" aria-label="Hide needs attention">✕</button>
+        <div class="ah" style="padding-right:30px"><b>Needs attention</b><span>what changes your next 14 days · hover to see where the stock sits, click to open</span><a href="products-world.html">All products →</a></div>
+        <div class="track" id="track"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+const d3 = await import("https://esm.sh/d3@7.9.0");
+const topojson = await import("https://esm.sh/topojson-client@3.1.0");
+const world = await (await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")).json();
+const land = topojson.feature(world, world.objects.countries);
+
+const RISK = { high: "#f87171", medium: "#fbbf24", low: "#34d399" };
+const LOCS = [
+  { id: "lyon", name: "Lyon warehouse", city: "Lyon", ll: [4.84, 45.76], units: 793 },
+  { id: "berlin", name: "Berlin store", city: "Berlin", ll: [13.4, 52.52], units: 667 },
+  { id: "rdam", name: "Rotterdam warehouse", city: "Rotterdam", ll: [4.48, 51.92], units: 602 },
+];
+// orders per city, last 14 days (cities with at least 5 orders)
+const CITIES = [["Paris",[2.35,48.86],73],["London",[-0.13,51.51],60],["Amsterdam",[4.9,52.37],55],["Berlin",[13.4,52.52],54],["Munich",[11.58,48.14],34],["Brussels",[4.35,50.85],33],["Rotterdam",[4.48,51.92],33],["Lyon",[4.84,45.76],27],["Utrecht",[5.12,52.09],25],["Hamburg",[9.99,53.55],19],["Milan",[9.19,45.46],16],["Vienna",[16.37,48.21],14],["Copenhagen",[12.57,55.68],12]];
+const DAILY = [62,57,51,74,64,81,35,82,48,47,41,58,74,54,79,77,51,76,59,54,58,64,44,57,43,71,64,44];
+// products that need attention (demo shop)
+const P = {
+  tote:   { t: "Canvas Tote", c: "#f9a8d4", stock: 40, lo: 110, hi: 190, risk: "high", head: ["Could run out", "day 3–6"], at: { lyon: 29, berlin: 7, rdam: 4 }, extra: "Sold more than Kumo's range last check" },
+  beanie: { t: "Knit Beanie", c: "#93c5fd", stock: 53, lo: 33, hi: 66, risk: "medium", head: ["Could run out", "from day 12"], at: { rdam: 33, lyon: 15, berlin: 5 } },
+  card:   { t: "Card Holder", c: "#fcd34d", stock: 71, lo: 38, hi: 77, risk: "medium", head: ["Could run out", "from day 13"], at: { berlin: 34, lyon: 28, rdam: 9 } },
+  tee:    { t: "Cotton Tee", c: "#c4b5fd", stock: 181, lo: 120, hi: 205, risk: "medium", head: ["Could run out", "from day 13"], at: { lyon: 79, rdam: 56, berlin: 46 } },
+  tie:    { t: "Silk Tie", c: "#fda4af", stock: 71, lo: 12, hi: 27, head: ["Sold", "33 in 14 days"], sub: "Kumo's range was 12–26", at: { berlin: 27, lyon: 27, rdam: 17 } },
+  scarf:  { t: "Wool Scarf", c: "#93c5fd", stock: 71, lo: 30, hi: 61, head: ["Sold", "54 in 14 days"], sub: "Kumo's range was 25–51", at: { rdam: 37, berlin: 29, lyon: 5 } },
+  rain:   { t: "Rain Shell", c: "#6ee7b7", stock: 222, lo: 14, hi: 31, head: ["Likely sells only", "14–31"], sub: "in 14 days · Kumo", at: { lyon: 90, berlin: 70, rdam: 62 } },
+  denim:  { t: "Denim Jacket", c: "#6ee7b7", stock: 210, lo: 22, hi: 45, head: ["Likely sells only", "22–45"], sub: "in 14 days · Kumo", at: { lyon: 77, rdam: 74, berlin: 59 } },
+  belt:   { t: "Leather Belt", c: "#fcd34d", stock: 164, lo: 18, hi: 37, head: ["Likely sells only", "18–37"], sub: "in 14 days · Kumo", at: { berlin: 78, rdam: 54, lyon: 32 } },
+  poster: { t: "Poster Set", c: "#a5b4fc", stock: 69, lo: 6, hi: 16, head: ["Sold", "3 in 14 days"], sub: "Kumo's range was 7–18", at: { berlin: 30, lyon: 27, rdam: 12 } },
+};
+const GROUPS = [
+  { h: "Could run out · our math, untested", ids: ["tote", "beanie", "card", "tee"] },
+  { h: "Sold more than Kumo expected", ids: ["tie", "scarf"] },
+  { h: "Stock far above what will likely sell", ids: ["rain", "denim", "belt"] },
+  { h: "Sold less than Kumo expected", ids: ["poster"] },
+];
+
+// ---------- right panel extras ----------
+{
+  const svg = d3.select("#spark"), w = 276, h = 40, x = d3.scaleLinear([0, 27], [2, w - 2]), y = d3.scaleLinear([0, d3.max(DAILY)], [h - 2, 4]);
+  DAILY.forEach((v, i) => svg.append("rect").attr("x", x(i) - 3.5).attr("width", 7).attr("y", y(v)).attr("height", h - 2 - y(v)).attr("rx", 1.5).attr("fill", i >= 14 ? "#9aa6ff" : "#3a3f7a"));
+  const dots = document.getElementById("dots");
+  for (let i = 0; i < 15; i++) dots.append(Object.assign(document.createElement("i"), { className: i < 11 ? "in" : "", title: i < 11 ? "inside Kumo's range" : "outside" }));
+  const risky = { lyon: "Canvas Tote: 29 of its 40 here", rdam: "Knit Beanie: 33 of its 53 here", berlin: "" };
+  document.getElementById("locrows").innerHTML = LOCS.map(l => `<div class="locrow" data-loc="${l.id}"><span class="ln">${l.name}<div class="w">${risky[l.id]}</div></span><span class="u">${l.units}</span></div>`).join("");
+}
+
+// ---------- attention strip ----------
+const track = document.getElementById("track");
+for (const g of GROUPS) {
+  const grp = document.createElement("div"); grp.className = "grp";
+  grp.innerHTML = `<div class="gh">${g.h}</div>`;
+  const cards = document.createElement("div"); cards.className = "cards";
+  for (const id of g.ids) {
+    const p = P[id], m = Math.max(p.stock, p.hi) * 1.08, X = v => (v / m) * 100;
+    const col = p.risk ? RISK[p.risk] : "#7c8cff";
+    const where = Object.entries(p.at).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${LOCS.find(l => l.id === k).city} <b>${v}</b>`).join(" · ");
+    const b = document.createElement("button"); b.className = "pc"; b.dataset.id = id;
+    b.innerHTML = `<div class="t"><span class="dot" style="background:${p.c}"></span><span class="name">${p.t}</span><span class="open">Open →</span></div>
+      <div class="head">${p.head[0]} <b style="color:${p.risk ? col : "#e7e7f0"}">${p.head[1]}</b></div>
+      <div class="m">${p.risk ? `<b>${p.stock}</b> left · likely sells <b>${p.lo}–${p.hi}</b>` : p.sub}</div>
+      <div class="m">${p.risk ? where : `<b>${p.stock}</b> in stock · ${where}`}</div>
+      <div class="bar"><span class="s" style="width:${X(p.stock)}%"></span><span class="r" style="left:${X(p.lo)}%;width:${X(p.hi) - X(p.lo)}%;border-color:${col};background:${col}33"></span><span class="k" style="left:${X(p.stock)}%"></span></div>`;
+    b.onmouseenter = () => show(id); b.onmouseleave = () => show(null); b.onfocus = () => show(id); b.onblur = () => show(null);
+    b.onclick = () => (location.href = "product-stage.html");
+    cards.append(b);
+  }
+  grp.append(cards); track.append(grp);
+}
+
+// ---------- globe: a slow sway over the selling region, never a full spin ----------
+const canvas = document.getElementById("globe"), ctx = canvas.getContext("2d"), stage = document.getElementById("stage");
+const proj = d3.geoOrthographic().clipAngle(90), path = d3.geoPath(proj, ctx), grat = d3.geoGraticule10();
+// the region: the bounding centre of locations + order cities
+const pts = [...LOCS.map(l => l.ll), ...CITIES.map(c => c[1])];
+const HOME = { lon: d3.mean(pts, p => p[0]), lat: d3.mean(pts, p => p[1]) };
+let zoom = 1, paused = false, t0 = performance.now(), heat = false, focusId = null, W = 0, H = 0, dpr = 1, cur = { ...HOME };
+// the user's own turn of the globe (drag); it eases back toward the region when let go, unless paused
+let user = { lon: 0, lat: 0 }, drag = null, lastMove = 0, hoverAt = null;
+function size() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; dpr = Math.min(2, devicePixelRatio); canvas.width = W * dpr; canvas.height = H * dpr; }
+addEventListener("resize", size); size();
+// markers
+const locsEl = document.getElementById("locs");
+for (const l of LOCS) {
+  const d = document.createElement("div"); d.className = "loc"; d.dataset.id = l.id;
+  d.innerHTML = `<div class="tag"></div><span class="pin"></span>`; locsEl.append(d); l.el = d;
+}
+const AT_LOC = { lyon: [["Canvas Tote", 29, "high"], ["Cotton Tee", 79, "medium"], ["Card Holder", 28, "medium"]], rdam: [["Knit Beanie", 33, "medium"], ["Cotton Tee", 56, "medium"]], berlin: [["Card Holder", 34, "medium"], ["Cotton Tee", 46, "medium"], ["Canvas Tote", 7, "high"]] };
+function tagFor(l, full = false) {
+  if (full && !focusId) {
+    return `<b>${l.name}</b> <span class="m">· ${l.units} units</span><span class="src">Shopify</span><div class="m" style="margin-top:3px">Could run out, stock here:</div>` +
+      AT_LOC[l.id].map(([n, u, b]) => `<div style="font-size:11.5px"><span style="color:${RISK[b]}">●</span> ${n} <span class="pu" style="font-size:12px">${u}</span></div>`).join("");
+  }
+  if (focusId) {
+    const p = P[focusId], u = p.at[l.id] ?? 0;
+    return `<b>${l.city}</b> <span class="pu">${u}</span> <span class="m">of ${p.t}</span>`;
+  }
+  const warn = { lyon: "Canvas Tote could run out · 29 here", rdam: "Knit Beanie could run out · 33 here" }[l.id];
+  return `<b>${l.name}</b> <span class="m">· ${l.units} units</span>${warn ? `<div class="warn">${warn}</div>` : ""}`;
+}
+function show(id) { focusId = id; document.querySelectorAll(".pc").forEach(c => c.classList.toggle("on", c.dataset.id === id)); LOCS.forEach(l => (l.el.querySelector(".tag").innerHTML = tagFor(l))); }
+show(null);
+
+function frame(now) {
+  const t = (now - t0) / 1000;
+  // sway: ±16° east–west and ±4° north–south around the region, about one minute per cycle
+  const sway = paused ? { lon: 0, lat: 0 } : { lon: 12 * Math.sin(t / 9.5), lat: 3 * Math.sin(t / 13) };
+  if (!drag && !paused && now - lastMove > 4000) { user.lon *= .985; user.lat *= .985; }   // drift home after 4 s
+  if (!drag || true) cur = { lon: HOME.lon + sway.lon + user.lon, lat: Math.max(-60, Math.min(75, HOME.lat + sway.lat + user.lat)) };
+  // the region sits in the middle of the free space (left of the store panel, above the strip)
+  const R = Math.max(420, H * 1.05) * zoom, fx = (W - (document.body.classList.contains("noStore") ? 0 : 320)) / 2, fy = (H - (document.body.classList.contains("noAttn") ? 0 : 200)) / 2;
+  proj.scale(R).translate([fx, fy]).rotate([-cur.lon, -cur.lat]);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  // atmosphere + water
+  const [cx, cy] = proj.translate(), g = ctx.createRadialGradient(cx, cy, R * 0.9, cx, cy, R * 1.08);
+  g.addColorStop(0, "rgba(124,140,255,.18)"); g.addColorStop(1, "rgba(124,140,255,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R * 1.08, 0, 7); ctx.fill();
+  ctx.fillStyle = "#0a0a18"; ctx.beginPath(); path({ type: "Sphere" }); ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,.035)"; ctx.lineWidth = 1; ctx.beginPath(); path(grat); ctx.stroke();
+  ctx.fillStyle = "#16162c"; ctx.strokeStyle = "#26264a"; ctx.lineWidth = .7; ctx.beginPath(); path(land); ctx.fill(); ctx.stroke();
+  // order cities: soft dots, or the heat layer when it is on; both clipped to land (nobody lives at sea)
+  ctx.save(); ctx.beginPath(); path(land); ctx.clip();
+  for (const [, ll, n] of CITIES) {
+    const p = proj(ll); if (!p || d3.geoDistance(ll, [cur.lon, cur.lat]) > 1.5) continue;
+    const r = heat ? 18 + n * .55 : 2 + Math.sqrt(n) * .5;
+    const gg = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], r);
+    gg.addColorStop(0, heat ? "rgba(199,206,255,.75)" : "rgba(154,166,255,.9)"); gg.addColorStop(heat ? .45 : .5, heat ? "rgba(124,140,255,.35)" : "rgba(154,166,255,.35)"); gg.addColorStop(1, "rgba(124,140,255,0)");
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(p[0], p[1], r, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  // hovered city: a ring
+  if (hoverAt && hoverAt.kind === "city") { const p = proj(hoverAt.ll); if (p) { ctx.strokeStyle = "rgba(231,231,240,.9)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p[0], p[1], 7, 0, 7); ctx.stroke(); } }
+  // location pins + their info tags, following the globe
+  for (const l of LOCS) {
+    const p = proj(l.ll), vis = p && d3.geoDistance(l.ll, [cur.lon, cur.lat]) < 1.45;
+    l.el.style.opacity = vis ? 1 : 0;
+    if (p) { l.el.style.left = `${p[0]}px`; l.el.style.top = `${p[1]}px`; }
+    // a pulse ring for locations holding stock of a product that could run out
+    if (p && (l.id === "lyon" || l.id === "rdam") && !focusId) {
+      const k = (t * .7 + (l.id === "rdam" ? .5 : 0)) % 1;
+      ctx.strokeStyle = `rgba(248,113,113,${.55 * (1 - k)})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p[0], p[1], 6 + k * 22, 0, 7); ctx.stroke();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+// keep labels from overlapping: Rotterdam's tag sits to the left, Lyon's below
+LOCS[2].el.style.transform = "translate(-100%,-100%)"; LOCS[2].el.querySelector(".pin").style.left = "100%";
+
+// drag to turn the globe, wheel to zoom, hover a city or location for its numbers
+const tip = document.getElementById("tip");
+canvas.addEventListener("pointerdown", e => { drag = { x: e.clientX, y: e.clientY, lon: user.lon, lat: user.lat }; canvas.setPointerCapture(e.pointerId); canvas.classList.add("drag"); tip.style.display = "none"; });
+canvas.addEventListener("pointermove", e => {
+  const b = stage.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  if (drag) {
+    const k = 75 / proj.scale();   // degrees per pixel at this zoom
+    user = { lon: drag.lon - (e.clientX - drag.x) * k * 1.4, lat: drag.lat + (e.clientY - drag.y) * k * 1.4 };
+    lastMove = performance.now(); return;
+  }
+  // nearest city within 14 px
+  let best = null, bd = 14;
+  for (const [name, ll, n] of CITIES) { const p = proj(ll); if (!p || d3.geoDistance(ll, [cur.lon, cur.lat]) > 1.45) continue; const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = { kind: "city", name, ll, n }; } }
+  hoverAt = best;
+  if (best) {
+    const loc = LOCS.find(l => l.city === best.name);
+    tip.innerHTML = `<b>${best.name}</b> <span class="m">· ${best.n} orders, last 14 days</span><span class="src">Shopify</span>${loc ? `<div class="m">${loc.name} is here · ${loc.units} units</div>` : ""}`;
+    tip.style.display = "block"; tip.style.left = `${Math.min(W - 260, x + 14)}px`; tip.style.top = `${y - 44}px`; canvas.style.cursor = "pointer";
+  } else { tip.style.display = "none"; canvas.style.cursor = ""; }
+});
+const endDrag = () => { drag = null; canvas.classList.remove("drag"); lastMove = performance.now(); };
+canvas.addEventListener("pointerup", endDrag); canvas.addEventListener("pointercancel", endDrag);
+canvas.addEventListener("pointerleave", () => { hoverAt = null; tip.style.display = "none"; });
+canvas.addEventListener("wheel", e => { e.preventDefault(); zoom = Math.max(.6, Math.min(2.4, zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); }, { passive: false });
+// locations: hover the label for the full picture
+for (const l of LOCS) {
+  l.el.onmouseenter = () => { l.el.querySelector(".tag").innerHTML = tagFor(l, true); };
+  l.el.onmouseleave = () => { l.el.querySelector(".tag").innerHTML = tagFor(l); };
+}
+// slide the panels away and back
+const toggle = (cls, on) => document.body.classList.toggle(cls, on);
+document.getElementById("hideStore").onclick = () => toggle("noStore", true);
+document.getElementById("openStore").onclick = () => toggle("noStore", false);
+document.getElementById("hideAttn").onclick = () => toggle("noAttn", true);
+document.getElementById("openAttn").onclick = () => toggle("noAttn", false);
+
+document.getElementById("zin").onclick = () => (zoom = Math.min(2.2, zoom * 1.25));
+document.getElementById("zout").onclick = () => (zoom = Math.max(.6, zoom / 1.25));
+document.getElementById("home").onclick = () => { zoom = 1; user = { lon: 0, lat: 0 }; t0 = performance.now(); };
+document.getElementById("pause").onclick = e => { paused = !paused; e.currentTarget.textContent = paused ? "▶" : "❙❙"; if (!paused) t0 = performance.now() - 0; };
+// map layer menu
+const btn = document.getElementById("layerBtn"), menu = document.getElementById("menu");
+btn.onclick = () => { const o = !menu.classList.contains("open"); menu.classList.toggle("open", o); btn.setAttribute("aria-expanded", o); };
+menu.querySelectorAll("button[data-l]").forEach(b => b.onclick = () => {
+  heat = b.dataset.l === "orders"; menu.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+  document.getElementById("layerName").textContent = heat ? "Orders, last 14 days" : "Map layer: none";
+  document.getElementById("layerSw").style.background = heat ? "linear-gradient(90deg,#3b3f9e,#7c8cff,#c7ceff)" : "none";
+  document.getElementById("legend").classList.toggle("on", heat); document.getElementById("crumb").textContent = heat ? "/ Orders, last 14 days" : "";
+  menu.classList.remove("open"); btn.setAttribute("aria-expanded", false);
+});
+document.addEventListener("click", e => { if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) { menu.classList.remove("open"); btn.setAttribute("aria-expanded", false); } });
+window.__show = show; window.__heat = () => menu.querySelector('[data-l="orders"]').click();
+</script>
+</body>
+</html>
